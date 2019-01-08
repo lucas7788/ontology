@@ -196,7 +196,7 @@ func (self *Executor) ExecuteOp(opcode OpCode, context *ExecutionContext) (VMSta
 		if err != nil {
 			return FAULT, err
 		}
-        if target < 0 || int(target) >= len(self.Context.Code) {
+		if target < 0 || int(target) >= len(self.Context.Code) {
 			return FAULT, errors.ERR_DCALL_OFFSET_ERROR
 		}
 		self.Context.SetInstructionPointer(target)
