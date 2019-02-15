@@ -665,6 +665,7 @@ type DebugOption struct {
 	OpenFilesCacheCapacity int
 	WriteBuffer            int
 	BlockCacheCapacity     int
+	NumBlockPerSecond      int
 }
 
 func defaultOpt() DebugOption {
@@ -672,6 +673,7 @@ func defaultOpt() DebugOption {
 		OpenFilesCacheCapacity: 500,
 		WriteBuffer:            4 * opt.MiB,
 		BlockCacheCapacity:     8 * opt.MiB,
+		NumBlockPerSecond:      100,
 	}
 }
 
