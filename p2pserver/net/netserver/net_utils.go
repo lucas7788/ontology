@@ -64,6 +64,10 @@ func nonTLSDial(addr string) (net.Conn, error) {
 	return conn, nil
 }
 
+func NTLSDial(addr string) (net.Conn, error) {
+	return nonTLSDial(addr)
+}
+
 //TLSDial return net.Conn with TLS
 func TLSDial(nodeAddr string) (net.Conn, error) {
 	CertPath := config.DefConfig.P2PNode.CertPath
