@@ -19,6 +19,7 @@
 package leveldbstore
 
 import (
+	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/core/store/common"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -40,11 +41,15 @@ const BITSPERKEY = 10
 
 //NewLevelDBStore return LevelDBStore instance
 func NewLevelDBStore(file string) (*LevelDBStore, error) {
+	debug := config.GetDebugOption()
 
 	// default Options
 	o := opt.Options{
-		NoSync: false,
-		Filter: filter.NewBloomFilter(BITSPERKEY),
+		NoSync:                 false,
+		BlockCacheCapacity:     debug.BlockCacheCapacity,
+		OpenFilesCacheCapacity: debug.OpenFilesCacheCapacity,
+		WriteBuffer:            debug.WriteBuffer,
+		Filter:                 filter.NewBloomFilter(BITSPERKEY),
 	}
 
 	db, err := leveldb.OpenFile(file, &o)

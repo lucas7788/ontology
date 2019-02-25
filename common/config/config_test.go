@@ -19,12 +19,18 @@ package config
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
-func TestConfigGeneration(t *testing.T) {
-	polarisConfig := newPolarisConfig()
-	assert.Equal(t, polarisConfig, Parameters)
-	defaultConfig := newDefaultConfig()
-	assert.NotEqual(t, defaultConfig, polarisConfig)
+func TestGetDebugOption(t *testing.T) {
+	_ = os.Setenv("debug_option", `{
+		"OpenFilesCacheCapacity": 500,
+		"WriteBuffer":            4194304,
+		"BlockCacheCapacity":     8388608
+	}`)
+	opt := GetDebugOption()
+	assert.Equal(t, opt.WriteBuffer, 4194304)
+	assert.Equal(t, opt.BlockCacheCapacity, 8388608)
+
 }
