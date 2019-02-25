@@ -439,18 +439,22 @@ func waitToExit() {
 var MaxCount int64 = 500
 
 func logOpenFiles() int64 {
-	count, err := exec.Command("/bin/sh", "-c", `"lsof | grep ontology -c"`).Output()
+	buf, err := exec.Command("bash", "-c", "lsof | grep ontology -c").Output()
 	if err != nil {
 		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command err:%v", err)
 	}
-	v, err := strconv.ParseInt(string(count), 10, 64)
+
+	count := string(buf)
+	count = strings.TrimSpace(count)
+
+	v, err := strconv.ParseInt(count, 10, 64)
 	if err != nil {
 		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command err:%v", err)
 	}
 	if v >= MaxCount {
 		MaxCount *= 2
 		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command result:%v", v)
-		content, _ := exec.Command("/bin/sh", "-c", `"lsof | grep ontology"`).Output()
+		content, _ := exec.Command("bash", "-c", "lsof | grep ontology").Output()
 		ioutil.WriteFile(fmt.Sprintf("lsof-%d.txt", v), content, 0666)
 		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command result:%v", v)
 	}
