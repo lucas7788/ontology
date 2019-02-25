@@ -683,9 +683,9 @@ func GetDebugOption() DebugOption {
 	}
 	err := json.Unmarshal([]byte(val), &opt)
 	if err != nil {
-		log.Errorf("unmarshal debug_option:%s, error: %v", val, err)
+		fmt.Printf("unmarshal debug_option:%s, error: %v", val, err)
 		return defaultOpt()
 	}
-	log.Infof("debug optionnnnnnnnnnnnnnnnnnnnnn:%v", opt)
+	fmt.Printf("debug optionnnnnnnnnnnnnnnnnnnnnn:%v\n", opt)
 	return opt
 }
