@@ -82,10 +82,7 @@ func (self *StateStore) init(currBlockHeight uint32) error {
 	if treeSize > 0 && treeSize != currBlockHeight+1 {
 		return fmt.Errorf("merkle tree size is inconsistent with blockheight: %d", currBlockHeight+1)
 	}
-	self.merkleHashStore, err = merkle.NewFileHashStore(self.merklePath, treeSize)
-	if err != nil {
-		return fmt.Errorf("merkle store is inconsistent with ChainStore. persistence will be disabled")
-	}
+	self.merkleHashStore = nil
 	self.merkleTree = merkle.NewTree(treeSize, hashes, self.merkleHashStore)
 	return nil
 }
@@ -120,14 +117,10 @@ func (self *StateStore) AddMerkleTreeRoot(txRoot common.Uint256) error {
 	key := self.getMerkleTreeKey()
 
 	self.merkleTree.AppendHash(txRoot)
-	err := self.merkleHashStore.Flush()
-	if err != nil {
-		return err
-	}
 	treeSize := self.merkleTree.TreeSize()
 	hashes := self.merkleTree.Hashes()
 	value := bytes.NewBuffer(make([]byte, 0, 4+len(hashes)*common.UINT256_SIZE))
-	err = serialization.WriteUint32(value, treeSize)
+	err := serialization.WriteUint32(value, treeSize)
 	if err != nil {
 		return err
 	}
