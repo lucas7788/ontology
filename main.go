@@ -21,9 +21,12 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -414,6 +417,7 @@ func logCurrBlockHeight() {
 				log.ClosePrintLog()
 				log.InitLog(int(config.DefConfig.Common.LogLevel), log.PATH, log.Stdout)
 			}
+			log.Infof("current open files:%d", logOpenFiles())
 		}
 	}
 }
@@ -430,4 +434,25 @@ func waitToExit() {
 		}
 	}()
 	<-exit
+}
+
+var MaxCount int64 = 500
+
+func logOpenFiles() int64 {
+	count, err := exec.Command("/bin/sh", "-c", `"lsof | grep ontology -c"`).Output()
+	if err != nil {
+		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command err:%v", err)
+	}
+	v, err := strconv.ParseInt(string(count), 10, 64)
+	if err != nil {
+		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command err:%v", err)
+	}
+	if v >= MaxCount {
+		MaxCount *= 2
+		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command result:%v", v)
+		content, _ := exec.Command("/bin/sh", "-c", `"lsof | grep ontology"`).Output()
+		ioutil.WriteFile(fmt.Sprintf("lsof-%d.txt", v), content, 0666)
+		log.Errorf("eeeeeeeeeeeeeeeeeeeeeeeeeeexecute command result:%v", v)
+	}
+	return v
 }
