@@ -131,21 +131,23 @@ type BlockSync struct {
 	info       *BlockHashInfo
 	conn       net.Conn
 	blockCount int64
+	totalBytes int64
 	lock       sync.Mutex
 }
 
-func (self *BlockSync) IncBlockCount() int64 {
+func (self *BlockSync) IncBlockCount(size int64) (int64, int64) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.blockCount += 1
-	return self.blockCount
+	self.totalBytes += size
+	return self.blockCount, self.totalBytes
 }
 
 func (self *BlockSync) readLoop() {
 	conn := self.conn
 	info := self.info
 	for {
-		msg, _, err := types.ReadMessage(conn)
+		msg, size, err := types.ReadMessage(conn)
 		checkerr(err)
 		switch message := msg.(type) {
 		case *types.BlkHeader:
@@ -154,9 +156,9 @@ func (self *BlockSync) readLoop() {
 				info.SetHash(header.Height, header.Hash())
 			}
 		case *types.Block:
-			count := self.IncBlockCount()
+			count, tb := self.IncBlockCount(int64(size))
 			if count%1000 == 0 {
-				fmt.Printf("received block:%d\n", count)
+				fmt.Printf("received block:%d, size:%d\n", count, tb)
 			}
 		}
 	}
