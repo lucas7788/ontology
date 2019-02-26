@@ -99,7 +99,9 @@ func checkerr(err error) {
 	}
 }
 
-func syncHash(conn net.Conn, info *BlockHashInfo) {
+func (self *BlockSync) syncHash() {
+	conn := self.conn
+	info := self.info
 	for {
 		hash, _ := info.GetHash(info.GetKnownHeight())
 		req := msgpack.NewHeadersReq(hash)
@@ -108,7 +110,9 @@ func syncHash(conn net.Conn, info *BlockHashInfo) {
 	}
 }
 
-func syncBlock(conn net.Conn, info *BlockHashInfo) {
+func (self *BlockSync) syncBlock() {
+	conn := self.conn
+	info := self.info
 	numBlocks := config.GetDebugOption().NumBlockPerSecond
 	for {
 		if info.GetKnownHeight() != 0 {
@@ -123,7 +127,23 @@ func syncBlock(conn net.Conn, info *BlockHashInfo) {
 	}
 }
 
-func readLoop(conn net.Conn, info *BlockHashInfo) {
+type BlockSync struct {
+	info       *BlockHashInfo
+	conn       net.Conn
+	blockCount int64
+	lock       sync.Mutex
+}
+
+func (self *BlockSync) IncBlockCount() int64 {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.blockCount += 1
+	return self.blockCount
+}
+
+func (self *BlockSync) readLoop() {
+	conn := self.conn
+	info := self.info
 	for {
 		msg, _, err := types.ReadMessage(conn)
 		checkerr(err)
@@ -134,7 +154,10 @@ func readLoop(conn net.Conn, info *BlockHashInfo) {
 				info.SetHash(header.Height, header.Hash())
 			}
 		case *types.Block:
-			//fmt.Printf("received block. height:%d\n", message.Blk.Header.Height)
+			count := self.IncBlockCount()
+			if count%1000 == 0 {
+				fmt.Printf("received block:%d\n", count)
+			}
 		}
 	}
 }
@@ -158,10 +181,15 @@ func main() {
 	fmt.Printf("receive msg:%v", msg)
 	WriteMessage(conn, msgpack.NewVerAck(false))
 
+	blockSync := BlockSync{
+		info: &info,
+		conn: conn,
+	}
+
 	go heartBeatService(conn)
-	go syncHash(conn, &info)
-	go syncBlock(conn, &info)
-	go readLoop(conn, &info)
+	go blockSync.syncHash()
+	go blockSync.syncBlock()
+	go blockSync.readLoop()
 
 	waitToExit()
 }
