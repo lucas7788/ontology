@@ -217,7 +217,7 @@ func (ta *TxActor) Receive(context actor.Context) {
 
 		log.Debugf("txpool-tx actor receives tx from %v ", sender.Sender())
 
-		ta.handleTransaction(sender, context.Self(), msg.Tx, msg.TxResultCh)
+		//ta.handleTransaction(sender, context.Self(), msg.Tx, msg.TxResultCh)
 
 	case *tc.GetTxnReq:
 		sender := context.Sender()

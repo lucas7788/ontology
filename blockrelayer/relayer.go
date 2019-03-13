@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"sort"
 	"time"
 
 	"github.com/ontio/ontology/common"
@@ -24,10 +25,15 @@ import (
 
 const KEY_CURR = "current"
 
+var DefStorage *Storage
+
 type Storage struct {
-	*StorageBackend
-	task     chan Task
-	currHash common.Uint256
+	backend             *StorageBackend
+	task                chan Task
+	currHash            common.Uint256
+	currHeight          uint32
+	headers             map[uint32]*types.Header
+	currentHeaderHeight uint32
 }
 
 type Task interface {
@@ -54,27 +60,82 @@ func Open(pt string) (*Storage, error) {
 		return nil, err
 	}
 
-	task := make(chan Task)
-	go backend.blockSaveLoop(task)
-
-	return &Storage{backend, task, backend.CurrHash()}, nil
+	task := make(chan Task, 1000)
+	headers := make(map[uint32]*types.Header)
+	store := &Storage{backend, task, backend.CurrHash(), backend.CurrentHeight(),
+		headers, backend.CurrentHeight()}
+	go store.blockSaveLoop(task)
+	return store, nil
 }
 
-func (self *Storage) SaveBlock(block *types.Block) {
-	if block.Header.PrevBlockHash != self.currHash {
-		return
-	}
+func (self *Storage) SaveBlock(block *types.Block) error {
 
 	sink := common.NewZeroCopySink(nil)
 	headerLen, err := block.SerializeExt(sink)
 	if err != nil {
 		log.Errorf("serialize block err: %v", err)
-		return
+		return err
 	}
 	raw := sink.Bytes()
 	self.task <- &SaveTask{
 		block: &RawBlock{Hash: block.Hash(), HeaderSize: headerLen, Height: block.Header.Height, Payload: raw},
 	}
+
+	return nil
+}
+
+func (self *Storage) blockSaveLoop(task <-chan Task) {
+	for {
+		select {
+		case t, ok := <-task:
+			if ok == false {
+				self.backend.flush()
+				return
+			}
+			switch task := t.(type) {
+			case *SaveTask:
+				log.Errorf("begin save block: %d", task.block.Height)
+				err := self.backend.saveBlock(task.block)
+				if err != nil {
+					log.Errorf("save block err:%v", err)
+					continue
+				}
+				self.currHeight = task.block.Height
+
+			case *FlushTask:
+				self.backend.flush()
+				task.finished <- self.backend.currInfo.nextHeight - 1
+			}
+		case <-time.After(MAX_TIME_OUT):
+			self.backend.flush()
+
+		}
+	}
+}
+
+func (self *Storage) AddHeader(headers []*types.Header) error {
+	sort.Slice(headers, func(i, j int) bool {
+		return headers[i].Height < headers[j].Height
+	})
+	for _, header := range headers {
+		self.headers[header.Height] = header
+	}
+	self.currentHeaderHeight = headers[len(headers)-1].Height
+	return nil
+}
+
+func (self *Storage) GetCurrentHeaderHeight() uint32 {
+	if self.currentHeaderHeight == 0 {
+		return self.backend.CurrentHeight()
+	}
+	return self.currentHeaderHeight
+}
+
+func (self *Storage) GetCurrentHeaderHash() common.Uint256 {
+	if header, ok := self.headers[self.currentHeaderHeight]; ok {
+		return header.Hash()
+	}
+	return self.backend.CurrHash()
 }
 
 func (self *Storage) Flush() uint32 {
@@ -93,6 +154,10 @@ func (self *Storage) SaveBlockTest(height uint32) {
 	self.task <- &SaveTask{
 		block: &RawBlock{Hash: blockHash, HeaderSize: uint32(len(raw) / 3), Height: height, Payload: raw},
 	}
+}
+
+func (self *Storage) CurrentHeight() uint32 {
+	return self.currHeight
 }
 
 type CurrInfo struct {
@@ -147,7 +212,8 @@ type BlockMeta struct {
 }
 
 type RawBlock struct {
-	Hash       common.Uint256
+	Hash common.Uint256
+
 	Height     uint32
 	HeaderSize uint32
 	Payload    []byte
@@ -289,8 +355,27 @@ func (self *StorageBackend) checkDataConsistence() (bool, error) {
 func (self *StorageBackend) GetBlockByHeight(height uint32) (*RawBlock, error) {
 	var metaKey [4]byte
 	binary.BigEndian.PutUint32(metaKey[:], height)
-
 	return self.getBlock(metaKey[:])
+}
+
+func (self *Storage) GetBlockHash(height uint32) (common.Uint256, error) {
+	header, ok := self.headers[height]
+	if ok {
+		return header.Hash(), nil
+	}
+	var metaKey [4]byte
+	binary.BigEndian.PutUint32(metaKey[:], height)
+	metaRaw, err := self.backend.metaDB.Get(metaKey[:], nil)
+	if err != nil {
+		return common.UINT256_EMPTY, err
+	}
+
+	meta, err := BlockMetaFromBytes(metaRaw)
+	if err != nil {
+		return common.UINT256_EMPTY, err
+	}
+
+	return meta.hash, nil
 }
 
 func (self *StorageBackend) getBlock(metaKey []byte) (*RawBlock, error) {
@@ -335,7 +420,13 @@ func (self *StorageBackend) CurrHash() common.Uint256 {
 func (self *StorageBackend) NextHeight() uint32 {
 	return self.currInfo.nextHeight
 }
-
+func (self *StorageBackend) CurrentHeight() uint32 {
+	if self.currInfo.nextHeight > 0 {
+		return self.currInfo.nextHeight - 1
+	} else {
+		return 0
+	}
+}
 func (self *StorageBackend) saveBlock(block *RawBlock) error {
 	if self.currInfo.nextHeight != block.Height {
 		return fmt.Errorf("need continue block")
@@ -368,27 +459,6 @@ func (self *StorageBackend) saveBlock(block *RawBlock) error {
 	}
 
 	return nil
-}
-
-func (self *StorageBackend) blockSaveLoop(task <-chan Task) {
-	for {
-		select {
-		case t, ok := <-task:
-			if ok == false {
-				self.flush()
-				return
-			}
-			switch task := t.(type) {
-			case *SaveTask:
-				self.saveBlock(task.block)
-			case *FlushTask:
-				self.flush()
-				task.finished <- self.currInfo.nextHeight - 1
-			}
-		case <-time.After(MAX_TIME_OUT):
-			self.flush()
-		}
-	}
 }
 
 func checkerr(err error) {

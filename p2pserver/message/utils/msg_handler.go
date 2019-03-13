@@ -21,6 +21,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/ontio/ontology/blockrelayer"
 	"net"
 	"strconv"
 	"strings"
@@ -118,7 +119,7 @@ func PingHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args 
 	}
 	remotePeer.SetHeight(ping.Height)
 
-	height := ledger.DefLedger.GetCurrentBlockHeight()
+	height := blockrelayer.DefStorage.CurrentHeight()
 	p2p.SetHeight(uint64(height))
 	msg := msgpack.NewPongMsg(uint64(height))
 
@@ -197,7 +198,7 @@ func TransactionHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID
 	log.Trace("[p2p]receive transaction message", data.Addr, data.Id)
 
 	var trn = data.Payload.(*msgTypes.Trn)
-	actor.AddTransaction(trn.Txn)
+	//actor.AddTransaction(trn.Txn)
 	log.Trace("[p2p]receive Transaction message hash", trn.Txn.Hash())
 
 }
