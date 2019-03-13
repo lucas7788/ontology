@@ -300,7 +300,7 @@ func (this *BlockSyncMgr) checkTimeout() {
 		}
 		flightInfo.SetNodeId(reqNode.GetID())
 
-		headerHash := this.relayer.GetCurrentHeaderHash()
+		headerHash := this.relayer.CurrHeaderHash()
 		msg := msgpack.NewHeadersReq(headerHash)
 		err := this.server.Send(reqNode, msg, false)
 		if err != nil {
@@ -356,8 +356,7 @@ func (this *BlockSyncMgr) syncHeader() {
 	}
 	curBlockHeight := this.relayer.CurrentHeight()
 
-	curHeaderHeight := this.relayer.GetCurrentHeaderHeight()
-	log.Error("curHeaderHeight：", curHeaderHeight)
+	curHeaderHeight := this.relayer.CurrHeaderHeight()
 	//Waiting for block catch up header
 	if curHeaderHeight-curBlockHeight >= SYNC_MAX_HEADER_FORWARD_SIZE {
 		return
@@ -369,7 +368,7 @@ func (this *BlockSyncMgr) syncHeader() {
 	}
 	this.addFlightHeader(reqNode.GetID(), NextHeaderId)
 
-	headerHash := this.relayer.GetCurrentHeaderHash()
+	headerHash := this.relayer.CurrHeaderHash()
 	msg := msgpack.NewHeadersReq(headerHash)
 	err := this.server.Send(reqNode, msg, false)
 	if err != nil {
@@ -392,7 +391,7 @@ func (this *BlockSyncMgr) syncBlock() {
 		return
 	}
 	curBlockHeight := this.relayer.CurrentHeight()
-	curHeaderHeight := this.relayer.GetCurrentHeaderHeight()
+	curHeaderHeight := this.relayer.CurrHeaderHeight()
 	count := int(curHeaderHeight - curBlockHeight)
 	if count <= 0 {
 		return
@@ -450,7 +449,6 @@ func (this *BlockSyncMgr) syncBlock() {
 			} else {
 				this.appendReqTime(reqNode.GetID())
 			}
-			log.Infof("send block req:%d", nextBlockHeight)
 		}
 		counter++
 		reqTimes = 1
@@ -464,7 +462,7 @@ func (this *BlockSyncMgr) OnHeaderReceive(fromID uint64, headers []*types.Header
 	}
 	log.Infof("Header receive height:%d - %d", headers[0].Height, headers[len(headers)-1].Height)
 	height := headers[0].Height
-	curHeaderHeight := this.relayer.GetCurrentHeaderHeight()
+	curHeaderHeight := this.relayer.CurrHeaderHeight()
 
 	//Means another gorountinue is adding header
 	if height <= curHeaderHeight {
@@ -493,7 +491,6 @@ func (this *BlockSyncMgr) OnBlockReceive(fromID uint64, blockSize uint32, block 
 	merkleRoot common.Uint256) {
 	height := block.Header.Height
 	blockHash := block.Hash()
-	log.Infof("[p2p]OnBlockReceive Height:%d", height)
 	flightInfo := this.getFlightBlock(blockHash, fromID)
 	if flightInfo != nil {
 		t := (time.Now().UnixNano() - flightInfo.GetStartTime().UnixNano()) / int64(time.Millisecond)
@@ -502,7 +499,7 @@ func (this *BlockSyncMgr) OnBlockReceive(fromID uint64, blockSize uint32, block 
 	}
 
 	this.delFlightBlock(blockHash)
-	curHeaderHeight := this.relayer.GetCurrentHeaderHeight()
+	curHeaderHeight := this.relayer.CurrHeaderHeight()
 	nextHeader := curHeaderHeight + 1
 	if height > nextHeader {
 		return
@@ -641,6 +638,7 @@ func (this *BlockSyncMgr) saveBlock() {
 		if nextBlock == nil {
 			return
 		}
+		log.Error("saveBlock:", nextBlockHeight)
 		err := this.relayer.SaveBlock(nextBlock)
 		this.delBlockCache(nextBlockHeight)
 		if err != nil {
@@ -652,7 +650,7 @@ func (this *BlockSyncMgr) saveBlock() {
 			log.Warnf("[p2p]saveBlock Height:%d AddBlock error:%s", nextBlockHeight, err)
 			reqNode := this.getNextNode(nextBlockHeight)
 			if reqNode == nil {
-				log.Error("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2")
+				log.Warn("[block_sync] reqNode is nil")
 				return
 			}
 			this.addFlightBlock(reqNode.GetID(), nextBlockHeight, nextBlock.Hash())
@@ -664,7 +662,6 @@ func (this *BlockSyncMgr) saveBlock() {
 			} else {
 				this.appendReqTime(reqNode.GetID())
 			}
-			log.Error("333333333333333333333333333333333")
 			return
 		}
 		nextBlockHeight++

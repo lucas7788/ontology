@@ -45,6 +45,8 @@ func (this *Block) CmdType() string {
 	return comm.BLOCK_TYPE
 }
 
+
+
 //Deserialize message payload
 func (this *Block) Deserialization(source *common.ZeroCopySource) error {
 	this.Blk = new(ct.Block)
