@@ -422,13 +422,13 @@ func (self *Storage) GetBlockHash(height uint32) (common.Uint256, error) {
 	if err != nil {
 		return common.UINT256_EMPTY, err
 	}
-
-	meta, err := BlockMetaFromBytes(metaRaw)
-	if err != nil {
-		return common.UINT256_EMPTY, err
+	var eof bool
+	source := common.NewZeroCopySource(metaRaw)
+	hash, eof = source.NextHash()
+	if eof {
+		err = io.ErrUnexpectedEOF
 	}
-
-	return meta.hash, nil
+	return hash, nil
 }
 
 func (self *StorageBackend) getBlock(metaKey []byte) (*RawBlock, error) {
