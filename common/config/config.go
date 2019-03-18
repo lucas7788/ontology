@@ -73,6 +73,7 @@ const (
 
 	DEFAULT_DATA_DIR      = "./Chain"
 	DEFAULT_RESERVED_FILE = "./peers.rsv"
+	DEFAULT_UPSTREAM_FILE = "./peers.upstream"
 )
 
 const (
@@ -499,11 +500,13 @@ type ConsensusConfig struct {
 type P2PRsvConfig struct {
 	ReservedPeers []string `json:"reserved"`
 	MaskPeers     []string `json:"mask"`
+	UpstreamPeers []string `json:"upstream"`
 }
 
 type P2PNodeConfig struct {
 	ReservedPeersOnly         bool
 	ReservedCfg               *P2PRsvConfig
+	UpstreamPeersOnly         bool
 	NetworkMagic              uint32
 	NetworkId                 uint32
 	NetworkName               string
