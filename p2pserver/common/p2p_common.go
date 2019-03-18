@@ -183,7 +183,7 @@ func IsUpstreamPeer(peer string) bool {
 		len(config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers) == 0 {
 		return false
 	}
-	for _,item := range config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers {
+	for _, item := range config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers {
 		if item == peer {
 			return true
 		}
