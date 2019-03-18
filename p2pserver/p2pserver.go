@@ -369,7 +369,7 @@ func (this *P2PServer) connectUpstream() {
 		}
 		upstreamNodes = append(upstreamNodes, ns[0]+port)
 		//update UpstreamPeers
-		config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers[i] = ns[0]+port
+		config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers[i] = ns[0] + port
 	}
 
 	connPeers := make(map[string]*peer.Peer)
