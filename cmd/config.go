@@ -177,7 +177,6 @@ func setP2PNodeConfig(ctx *cli.Context, cfg *config.P2PNodeConfig) {
 		// sync block from upstream node
 		for i := 0; i < len(cfg.ReservedCfg.UpstreamPeers); i++ {
 			log.Info("upstream addr: " + cfg.ReservedCfg.UpstreamPeers[i])
-			//if strings.Contains(cfg.ReservedCfg.UpstreamPeers[i], "http")
 		}
 	}
 }
