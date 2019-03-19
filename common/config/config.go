@@ -506,7 +506,6 @@ type P2PRsvConfig struct {
 type P2PNodeConfig struct {
 	ReservedPeersOnly         bool
 	ReservedCfg               *P2PRsvConfig
-	UpstreamPeersOnly         bool
 	NetworkMagic              uint32
 	NetworkId                 uint32
 	NetworkName               string

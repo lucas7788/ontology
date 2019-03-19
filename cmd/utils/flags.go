@@ -111,10 +111,6 @@ var (
 		Usage: "Reserved peers `<file>`",
 		Value: config.DEFAULT_RESERVED_FILE,
 	}
-	UpstreamPeersOnlyFlag = cli.BoolFlag{
-		Name:  "upstream-only",
-		Usage: "Connect upstream peers. Upstream peers are configured with --reserved-file.",
-	}
 	UpstreamPeersFileFlag = cli.StringFlag{
 		Name:  "upstream-file",
 		Usage: "Upstream peers `<file>`",

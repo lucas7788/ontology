@@ -20,7 +20,6 @@ package p2pserver
 
 import (
 	"github.com/ontio/ontology/blockrelayer"
-	"github.com/ontio/ontology/common/config"
 	"math"
 	"sort"
 	"sync"
@@ -806,7 +805,7 @@ func (this *BlockSyncMgr) getNextNode(nextBlockHeight uint32) *peer.Peer {
 		if n.GetSyncState() != p2pComm.ESTABLISH {
 			continue
 		}
-		if config.DefConfig.P2PNode.UpstreamPeersOnly && !p2pComm.IsUpstreamPeer(n.GetAddr()) {
+		if !p2pComm.IsUpstreamPeer(n.GetAddr()) {
 			continue
 		}
 		nodeBlockHeight := n.GetHeight()

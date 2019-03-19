@@ -144,7 +144,6 @@ func setP2PNodeConfig(ctx *cli.Context, cfg *config.P2PNodeConfig) {
 	cfg.DualPortSupport = ctx.Bool(utils.GetFlagName(utils.DualPortSupportFlag))
 	cfg.HttpInfoPort = ctx.Uint(utils.GetFlagName(utils.HttpInfoPortFlag))
 	cfg.ReservedPeersOnly = ctx.Bool(utils.GetFlagName(utils.ReservedPeersOnlyFlag))
-	cfg.UpstreamPeersOnly = ctx.Bool(utils.GetFlagName(utils.UpstreamPeersOnlyFlag))
 	cfg.MaxConnInBound = ctx.Uint(utils.GetFlagName(utils.MaxConnInBoundFlag))
 	cfg.MaxConnOutBound = ctx.Uint(utils.GetFlagName(utils.MaxConnOutBoundFlag))
 	cfg.MaxConnInBoundForSingleIP = ctx.Uint(utils.GetFlagName(utils.MaxConnInBoundForSingleIPFlag))
@@ -167,17 +166,20 @@ func setP2PNodeConfig(ctx *cli.Context, cfg *config.P2PNodeConfig) {
 			log.Info("mask addr: " + cfg.ReservedCfg.MaskPeers[i])
 		}
 	}
+
+	// sync block from upstream node
 	upfile := ctx.String(utils.GetFlagName(utils.UpstreamPeersFileFlag))
-	if cfg.UpstreamPeersOnly {
-		err := utils.GetJsonObjectFromFile(upfile, &cfg.ReservedCfg)
-		if err != nil {
-			log.Errorf("Get ReservedCfg error:%s", err)
-			return
-		}
-		// sync block from upstream node
-		for i := 0; i < len(cfg.ReservedCfg.UpstreamPeers); i++ {
-			log.Info("upstream addr: " + cfg.ReservedCfg.UpstreamPeers[i])
-		}
+	if !common.FileExisted(upfile) {
+		log.Warnf("upstream file %s not exist\n", upfile)
+		return
+	}
+	err := utils.GetJsonObjectFromFile(upfile, &cfg.ReservedCfg)
+	if err != nil {
+		log.Errorf("Get UpstreamCfg error:%s", err)
+		return
+	}
+	for i := 0; i < len(cfg.ReservedCfg.UpstreamPeers); i++ {
+		log.Info("upstream addr: " + cfg.ReservedCfg.UpstreamPeers[i])
 	}
 }
 

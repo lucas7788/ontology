@@ -51,7 +51,6 @@ func setupBlockRelayer() *cli.App {
 		//p2p setting
 		utils.ReservedPeersOnlyFlag,
 		utils.ReservedPeersFileFlag,
-		utils.UpstreamPeersOnlyFlag,
 		utils.UpstreamPeersFileFlag,
 		utils.NetworkIdFlag,
 		utils.NodePortFlag,
