@@ -50,10 +50,11 @@ go build block-relayer.go
 
 执行下面的命令启动relayer节点
 ```
-./block-relayer --upstream-file upstream节点配置文件名
-```
-如果upstream节点配置文件名是`peers.upstream`
-启动命令可以省略为
-```
 ./block-relayer
 ```
+relayer节点会默认读取当前目录下文件名是`peers.upstream`文件,如果你想指定读取的文件,请使用下面的命令启动
+
+```
+./block-relayer --upstream-file upstream节点配置文件路径
+```
+
