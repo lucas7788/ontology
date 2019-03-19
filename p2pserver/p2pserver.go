@@ -354,7 +354,7 @@ func (this *P2PServer) connectUpstream() {
 	for i, n := range config.DefConfig.P2PNode.ReservedCfg.UpstreamPeers {
 		ip, err := common.ParseIPAddr(n)
 		if err != nil {
-			log.Warnf("[p2p]seed peer %s address format is wrong", n)
+			log.Warnf("[p2p]upstream peer %s address format is wrong", n)
 			continue
 		}
 		ns, err := net.LookupHost(ip)
@@ -364,7 +364,7 @@ func (this *P2PServer) connectUpstream() {
 		}
 		port, err := common.ParseIPPort(n)
 		if err != nil {
-			log.Warnf("[p2p]seed peer %s address format is wrong", n)
+			log.Warnf("[p2p]upstream peer %s address format is wrong", n)
 			continue
 		}
 		upstreamNodes = append(upstreamNodes, ns[0]+port)
