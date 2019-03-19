@@ -34,7 +34,7 @@ $ glide update
 go build block-relayer.go
 ```
 
-成功编译后会生成两个可以执行程序
+成功编译后会生成可以执行程序
 
 * `block-relayer`: 节点程序/以命令行方式提供的节点控制程序
 
