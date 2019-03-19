@@ -582,6 +582,9 @@ func (this *P2PServer) pingTo(peers []*peer.Peer) {
 	for _, p := range peers {
 		if p.GetSyncState() == common.ESTABLISH {
 			height := blockrelayer.DefStorage.CurrentHeight()
+			if !common.IsUpstreamPeer(p.GetAddr()) {
+				height += 1
+			}
 			ping := msgpack.NewPingMsg(uint64(height))
 			go this.Send(p, ping, false)
 		}
