@@ -38,6 +38,10 @@ func (r *RandomAccessStack) Count() int {
 	return len(r.e)
 }
 
+func(r *RandomAccessStack) GetE() []types.StackItems {
+	return r.e
+}
+
 func (r *RandomAccessStack) Insert(index int, t types.StackItems) {
 	if t == nil {
 		return

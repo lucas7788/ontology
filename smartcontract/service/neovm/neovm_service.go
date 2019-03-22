@@ -21,7 +21,6 @@ package neovm
 import (
 	"bytes"
 	"fmt"
-
 	"github.com/ontio/ontology-crypto/keypair"
 	scommon "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/log"
@@ -172,6 +171,13 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 				return nil, ERR_GAS_INSUFFICIENT
 			}
 		}
+		fmt.Println("opExec:", this.Engine.OpExec.Name)
+		t,_:=Dump(this.Engine.EvaluationStack.GetE())
+
+		fmt.Println("EvalStack:", t)
+		t2,_:=Dump(this.Engine.AltStack.GetE())
+		fmt.Println("AltStack:", t2)
+
 		switch this.Engine.OpCode {
 		case vm.VERIFY:
 			if vm.EvaluationStackCount(this.Engine) < 3 {
@@ -255,6 +261,7 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 	}
 	return nil, nil
 }
+
 
 // SystemCall provide register service for smart contract to interaction with blockchain
 func (this *NeoVmService) SystemCall(engine *vm.ExecutionEngine) error {

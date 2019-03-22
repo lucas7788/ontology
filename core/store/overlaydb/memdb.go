@@ -22,7 +22,11 @@
 package overlaydb
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"math/rand"
+	"sort"
+	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb/comparer"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -371,6 +375,30 @@ func (p *MemDB) ForEach(f func(key, val []byte)) {
 	}
 
 }
+
+func (self *MemDB) Hash() []byte {
+	var kv []string
+	self.ForEach(func(key, val []byte) {
+		if len(val) == 0 {
+			var buf [4]byte
+			binary.BigEndian.PutUint32(buf[:], uint32(len(key)))
+			kv = append(kv, string(append(buf[:], []byte(key)...)))
+		} else {
+			var buf [4]byte
+			binary.BigEndian.PutUint32(buf[:], uint32(len(key)))
+			item := string(append(buf[:], []byte(key)...))
+			binary.BigEndian.PutUint32(buf[:], uint32(len(val)))
+			item += string(append(buf[:], val...))
+			kv = append(kv, item)
+		}
+	})
+
+	sort.Strings(kv)
+	kvall := strings.Join(kv, "")
+	hash := sha256.Sum256([]byte(kvall))
+	return hash[:]
+}
+
 
 // NewIterator returns an iterator of the MemDB.
 // The returned iterator is not safe for concurrent use, but it is safe to use

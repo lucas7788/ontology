@@ -19,6 +19,7 @@
 package storage
 
 import (
+	"fmt"
 	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/payload"
 	"github.com/ontio/ontology/core/store/common"
@@ -81,6 +82,7 @@ func (self *CacheDB) Put(key []byte, value []byte) {
 func (self *CacheDB) put(prefix common.DataEntryPrefix, key []byte, value []byte) {
 	self.keyScratch = makePrefixedKey(self.keyScratch, byte(prefix), key)
 	self.memdb.Put(self.keyScratch, value)
+	fmt.Printf("cache db: Put key: %x, value: %x\n", key, value)
 }
 
 func (self *CacheDB) GetContract(addr comm.Address) (*payload.DeployCode, error) {
@@ -119,7 +121,16 @@ func (self *CacheDB) DeleteContract(address comm.Address) {
 }
 
 func (self *CacheDB) Get(key []byte) ([]byte, error) {
-	return self.get(common.ST_STORAGE, key)
+	//if comm.ToHexString(key) == "e02944715c365aa7d0049ad5fa7f47c52bd91cee4730315f035f52335f5f" {
+	//	fmt.Println("")
+	//	key2,_ := comm.HexToBytes("e02944715c365aa7d0049ad5fa7f47c52bd91cee4730315f035f52335f")
+	//	val, _ := self.get(common.ST_STORAGE, key2)
+	//	fmt.Printf("val: %x\n", val)
+	//}
+	val, _ := self.get(common.ST_STORAGE, key)
+	fmt.Printf("cache db: get key: %x, value: %x\n", key, val)
+	return val,nil
+
 }
 
 func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte) ([]byte, error) {
@@ -144,6 +155,7 @@ func (self *CacheDB) Delete(key []byte) {
 func (self *CacheDB) delete(prefix common.DataEntryPrefix, key []byte) {
 	self.keyScratch = makePrefixedKey(self.keyScratch, byte(prefix), key)
 	self.memdb.Delete(self.keyScratch)
+	fmt.Printf("cache db: delete key %x\n", key)
 }
 
 func (self *CacheDB) NewIterator(key []byte) common.StoreIterator {

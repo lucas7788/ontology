@@ -163,6 +163,9 @@ func importBlocks(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("block height:%d ExecuteBlock error:%s", i, err)
 		}
+		//if block.Header.Height == 1087896 {
+		//	panic("")
+		//}
 		err = ledger.DefLedger.SubmitBlock(block, execResult)
 		if err != nil {
 			return fmt.Errorf("SubmitBlock block height:%d error:%s", i, err)
