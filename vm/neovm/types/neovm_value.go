@@ -679,7 +679,7 @@ func (self *VmValue) dump() string {
 	case bigintType:
 		return fmt.Sprintf("int(%d)", self.bigInt)
 	case bytearrayType:
-		return fmt.Sprintf("bytes(hex:%d)", self.byteArray)
+		return fmt.Sprintf("bytes(hex:%x)", self.byteArray)
 	case arrayType:
 		data := ""
 		for _, v := range self.array.Data {
