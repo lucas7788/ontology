@@ -704,6 +704,8 @@ func (self *VmValue) dump() string {
 			data += v.dump() + ", "
 		}
 		return fmt.Sprintf("struct[%d]{%s}", len(self.structval.Data), data)
+	case interopType:
+		return fmt.Sprintf("interop[%x]", self.interop.Data)
 	default:
 		panic("unreacheable!")
 	}
