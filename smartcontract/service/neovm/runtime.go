@@ -180,8 +180,12 @@ func dump_item(item vmtypes.StackItems) string {
 		return fmt.Sprintf("bytes(hex:%x)", bs)
 
 	case *vmtypes.Boolean:
-		bs, _ := item.GetByteArray()
-		return fmt.Sprintf("bool(%v)", bs)
+		bs, _ := item.GetBoolean()
+		v := 0
+		if bs {
+			v = 1
+		}
+		return fmt.Sprintf("int(%d)", v)
 
 	case *vmtypes.Integer:
 		b, _ := item.GetBigInteger()

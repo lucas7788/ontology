@@ -727,7 +727,7 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	})
 	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, result.WriteSet.Hash())
 
-	if blockHeight == 1087896 {
+	if blockHeight >= 1142752 {
 		panic("")
 	}
 	return nil

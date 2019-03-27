@@ -33,6 +33,7 @@ import (
 	"github.com/ontio/ontology/smartcontract/storage"
 	vm "github.com/ontio/ontology/vm/neovm"
 	ntypes "github.com/ontio/ontology/vm/neovm/types"
+	"os"
 )
 
 var (
@@ -155,10 +156,12 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 				return nil, ERR_CHECK_STACK_SIZE
 			}
 		}
+		name := vm.OpExecList[this.Engine.OpCode].Name
 		if this.Engine.OpCode >= vm.PUSHBYTES1 && this.Engine.OpCode <= vm.PUSHBYTES75 {
 			if !this.ContextRef.CheckUseGas(OPCODE_GAS) {
 				return nil, ERR_GAS_INSUFFICIENT
 			}
+			name = "pushbytes"
 		} else {
 			if err := this.Engine.ValidateOp(); err != nil {
 				return nil, err
@@ -171,12 +174,12 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 				return nil, ERR_GAS_INSUFFICIENT
 			}
 		}
-		fmt.Println("opExec:", this.Engine.OpExec.Name)
-		t,_:=Dump(this.Engine.EvaluationStack.GetE())
 
-		fmt.Println("EvalStack:", t)
-		t2,_:=Dump(this.Engine.AltStack.GetE())
-		fmt.Println("AltStack:", t2)
+		t, _ := Dump(this.Engine.EvaluationStack.GetE())
+		_, _ = fmt.Fprintln(os.Stderr, "EvalStack:", t)
+		t2, _ := Dump(this.Engine.AltStack.GetE())
+		_, _ = fmt.Fprintln(os.Stderr, "AltStack:", t2)
+		_, _ = fmt.Fprintln(os.Stderr, "opExec:", name)
 
 		switch this.Engine.OpCode {
 		case vm.VERIFY:
@@ -261,7 +264,6 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 	}
 	return nil, nil
 }
-
 
 // SystemCall provide register service for smart contract to interaction with blockchain
 func (this *NeoVmService) SystemCall(engine *vm.ExecutionEngine) error {
