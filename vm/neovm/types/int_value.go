@@ -33,6 +33,11 @@ func (self IntValue) Rsh(other IntValue) (result IntValue, err error) {
 
 	if val > constants.MAX_INT_SIZE*8 {
 		// IntValue is enforced to not exceed this size, so return 0 directly
+		// (-x) >> s == ^(x-1) >> s == ^((x-1) >> s) == -(((x-1) >> s) + 1)  reference from big.Int
+		// (-x) >> s == -(0 + 1) == -1
+		if self.Sign() < 0 {
+			result = IntValFromInt(-1)
+		}
 		return
 	}
 
