@@ -152,7 +152,7 @@ func (self *VmValue) buildParamToNative(sink *common.ZeroCopySink) error {
 		}
 		sink.WriteVarBytes(bs)
 	case arrayType:
-		sink.WriteVarBytes(BigIntToBytes(big.NewInt(int64(len(self.array.Data)))))
+		sink.WriteVarBytes(common.BigIntToNeoBytes(big.NewInt(int64(len(self.array.Data)))))
 		for _, v := range self.array.Data {
 			err := v.BuildParamToNative(sink)
 			if err != nil {

@@ -256,12 +256,12 @@ func TestArithmetic(t *testing.T) {
 	checkStackOpCode(t, NEGATE, []Value{-10}, []Value{10})
 	checkStackOpCode(t, ABS, []Value{-10}, []Value{10})
 
-	checkStackOpCode(t, NOT, []Value{1}, []Value{0})
+	checkStackOpCode(t, NOT, []Value{1}, []Value{false})
 	checkStackOpCode(t, NOT, []Value{0}, []Value{1})
 
-	checkStackOpCode(t, NZ, []Value{0}, []Value{0})
-	checkStackOpCode(t, NZ, []Value{-10}, []Value{1})
-	checkStackOpCode(t, NZ, []Value{10}, []Value{1})
+	checkStackOpCode(t, NZ, []Value{0}, []Value{false})
+	checkStackOpCode(t, NZ, []Value{-10}, []Value{true})
+	checkStackOpCode(t, NZ, []Value{10}, []Value{true})
 }
 
 func TestArrayOpCode(t *testing.T) {
@@ -434,5 +434,8 @@ func oldValue2json(t *testing.T, expect types.StackItems) string {
 }
 
 func assertEqualOld(t *testing.T, expect, actual types.StackItems) {
-	assert.Equal(t, oldValue2json(t, expect), oldValue2json(t, actual))
+	ex := oldValue2json(t, expect)
+	act := oldValue2json(t, actual)
+
+	assert.Equal(t, ex, act)
 }
