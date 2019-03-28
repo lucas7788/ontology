@@ -177,7 +177,7 @@ func (self IntValue) Xor(other IntValue) (IntValue, error) {
 	return self.intOp(other, func(a, b int64) (int64, bool) {
 		return a ^ b, true
 	}, func(a, b *big.Int) (IntValue, error) {
-		return IntValFromBigInt(new(big.Int).And(a, b))
+		return IntValFromBigInt(new(big.Int).Xor(a, b))
 	})
 }
 
@@ -260,7 +260,7 @@ func (self IntValue) Mod(other IntValue) (IntValue, error) {
 	return self.intOp(other, func(a, b int64) (int64, bool) {
 		return a % b, true
 	}, func(a, b *big.Int) (IntValue, error) {
-		return IntValFromBigInt(new(big.Int).Mod(a, b))
+		return IntValFromBigInt(new(big.Int).Rem(a, b))
 	})
 }
 
