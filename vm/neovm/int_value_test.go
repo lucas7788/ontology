@@ -1,9 +1,10 @@
-package types
-
+package neovm
 
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
+	vmtypes "github.com/ontio/ontology/vm/neovm/types"
 	"math/big"
 	"testing"
 
@@ -54,6 +55,8 @@ func compareIntOpInner(t *testing.T, left, right *big.Int, func1, func2 IntOp) {
 	right2 := big.NewInt(0).Set(right)
 	val1, err := func1(left, right)
 	val2, err2 := func2(left2, right2)
+	fmt.Println("val1:", val1)
+	fmt.Println("val2:", val2)
 	if err != nil || err2 != nil {
 		return
 	}
@@ -63,7 +66,8 @@ func compareIntOpInner(t *testing.T, left, right *big.Int, func1, func2 IntOp) {
 func compareIntOp(t *testing.T, func1, func2 IntOp) {
 	const N = 100000
 	for i := 0; i < N; i++ {
-		left, right := genBBInt()
+		left := big.NewInt(0).SetInt64(-6615735770392487332)
+		right := big.NewInt(0).SetInt64(6275592772156762005)
 		compareIntOpInner(t, left, right, func1, func2)
 		left, right = genLLInt()
 		compareIntOpInner(t, left, right, func1, func2)
@@ -79,7 +83,7 @@ func TestIntValue_Abs(t *testing.T) {
 		abs := big.NewInt(0).Abs(left)
 		return common.BigIntToNeoBytes(abs), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		val, err := IntValFromBigInt(left)
+		val, err := vmtypes.IntValFromBigInt(left)
 		assert.Nil(t, err)
 		val = val.Abs()
 
@@ -92,11 +96,11 @@ func TestIntValue_Add(t *testing.T) {
 		val := big.NewInt(0).Add(left, right)
 		return common.BigIntToNeoBytes(val), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
@@ -114,11 +118,11 @@ func TestIntValue_Sub(t *testing.T) {
 		val := big.NewInt(0).Sub(left, right)
 		return common.BigIntToNeoBytes(val), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
@@ -136,11 +140,11 @@ func TestIntValue_Mul(t *testing.T) {
 		val := big.NewInt(0).Mul(left, right)
 		return common.BigIntToNeoBytes(val), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
@@ -158,11 +162,11 @@ func TestIntValue_Div(t *testing.T) {
 		val := big.NewInt(0).Quo(left, right)
 		return common.BigIntToNeoBytes(val), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
@@ -180,11 +184,11 @@ func TestIntValue_Mod(t *testing.T) {
 		val := big.NewInt(0).Rem(left, right)
 		return common.BigIntToNeoBytes(val), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
@@ -199,42 +203,18 @@ func TestIntValue_Mod(t *testing.T) {
 
 func TestIntValue_Rsh(t *testing.T) {
 	compareIntOp(t, func(left, right *big.Int) ([]byte, error) {
-		nb := new(big.Int)
-		val := nb.Rsh(left, uint(right.Int64()))
-		return common.BigIntToNeoBytes(val), nil
+		b := BigIntZip(left, right, SHR)
+		return common.BigIntToNeoBytes(b), nil
 	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
+		lhs, err := vmtypes.IntValFromBigInt(left)
 		if err != nil {
 			return nil, err
 		}
-		rhs, err := IntValFromBigInt(right)
+		rhs, err := vmtypes.IntValFromBigInt(right)
 		if err != nil {
 			return nil, err
 		}
 		val, err := lhs.Rsh(rhs)
-		if err != nil {
-			return nil, err
-		}
-
-		return val.ToNeoBytes(), nil
-	})
-}
-
-func TestIntValue_SHL(t *testing.T) {
-	compareIntOp(t, func(left, right *big.Int) ([]byte, error) {
-		nb := new(big.Int)
-		val := nb.Lsh(left, uint(right.Int64()))
-		return common.BigIntToNeoBytes(val), nil
-	}, func(left, right *big.Int) ([]byte, error) {
-		lhs, err := IntValFromBigInt(left)
-		if err != nil {
-			return nil, err
-		}
-		rhs, err := IntValFromBigInt(right)
-		if err != nil {
-			return nil, err
-		}
-		val, err := lhs.Lsh(rhs)
 		if err != nil {
 			return nil, err
 		}
