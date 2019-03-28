@@ -51,6 +51,15 @@ func NewLedger(dataDir string, stateHashHeight uint32) (*Ledger, error) {
 func (self *Ledger) GetStore() store.LedgerStore {
 	return self.ldgStore
 }
+func (self *Ledger) SetOldData(oldDataDir string) {
+	self.ldgStore.SetOldData(oldDataDir)
+}
+func (self *Ledger) ReadOldData(height uint32) {
+	self.ldgStore.ReadOldData(height)
+}
+func (self *Ledger) GetOldDataLendth() int {
+	return 0
+}
 
 func (self *Ledger) Init(defaultBookkeeper []keypair.PublicKey, genesisBlock *types.Block) error {
 	err := self.ldgStore.InitLedgerStoreWithGenesisBlock(genesisBlock, defaultBookkeeper)

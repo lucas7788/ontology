@@ -21,9 +21,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"io"
-	"os"
-
 	"github.com/gosuri/uiprogress"
 	"github.com/ontio/ontology/cmd/utils"
 	"github.com/ontio/ontology/common/config"
@@ -33,6 +30,8 @@ import (
 	"github.com/ontio/ontology/core/ledger"
 	"github.com/ontio/ontology/core/types"
 	"github.com/urfave/cli"
+	"io"
+	"os"
 )
 
 var ImportCommand = cli.Command{
@@ -42,6 +41,7 @@ var ImportCommand = cli.Command{
 	Action:    importBlocks,
 	Flags: []cli.Flag{
 		utils.ImportFileFlag,
+		utils.OldTxTFlag,
 		utils.ImportEndHeightFlag,
 		utils.DataDirFlag,
 		utils.ConfigFlag,
@@ -120,11 +120,14 @@ func importBlocks(ctx *cli.Context) error {
 	if endBlockHeight == 0 || endBlockHeight > metadata.EndBlockHeight {
 		endBlockHeight = metadata.EndBlockHeight
 	}
-
+	oldFile := ctx.String(utils.GetFlagName(utils.OldTxTFlag))
+    ledger.DefLedger.SetOldData(oldFile)
+	ledger.DefLedger.ReadOldData(currBlockHeight)
 	startBlockHeight := metadata.StartBlockHeight
 	if startBlockHeight > (currBlockHeight + 1) {
 		return fmt.Errorf("import block error: StartBlockHeight:%d larger than NextBlockHeight:%d", startBlockHeight, currBlockHeight+1)
 	}
+
 	//progress bar
 	uiprogress.Start()
 	bar := uiprogress.AddBar(int(endBlockHeight - startBlockHeight + 1)).
@@ -135,7 +138,6 @@ func importBlocks(ctx *cli.Context) error {
 		})
 
 	PrintInfoMsg("Start import blocks.")
-
 	for i := uint32(startBlockHeight); i <= endBlockHeight; i++ {
 		size, err := serialization.ReadUint32(fReader)
 		if err != nil {
@@ -163,6 +165,7 @@ func importBlocks(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("block height:%d ExecuteBlock error:%s", i, err)
 		}
+
 		err = ledger.DefLedger.SubmitBlock(block, execResult)
 		if err != nil {
 			return fmt.Errorf("SubmitBlock block height:%d error:%s", i, err)

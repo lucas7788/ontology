@@ -58,6 +58,11 @@ var (
 		Usage: "Path of import `<file>`",
 		Value: DEFAULT_EXPORT_FILE,
 	}
+	OldTxTFlag = cli.StringFlag{
+		Name:  "old-file",
+		Usage: "Path of import `<file>`",
+		Value: "./old.txt",
+	}
 	ImportEndHeightFlag = cli.UintFlag{
 		Name:  "end-height",
 		Usage: "Stop import block `<height>` of the import.",
