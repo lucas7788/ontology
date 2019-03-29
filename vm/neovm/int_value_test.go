@@ -62,7 +62,7 @@ func compareIntOpInner(t *testing.T, left, right *big.Int, func1, func2 IntOp) {
 }
 
 func compareIntOp(t *testing.T, func1, func2 IntOp) {
-	const N = 2
+	const N = 10000
 	for i := 0; i < N; i++ {
 		left, right := genBBInt()
 		compareIntOpInner(t, left, right, func1, func2)
@@ -89,18 +89,7 @@ func TestIntValue_Abs(t *testing.T) {
 }
 
 func TestIntValue_Other(t *testing.T) {
-	opcodes := []OpCode{
-		MOD,
-		AND,
-		OR,
-		XOR,
-		ADD,
-		SUB,
-		MUL,
-		DIV,
-		SHL,
-		SHR,
-		MAX, MIN}
+	opcodes := []OpCode{MOD, AND, OR, XOR, ADD, SUB, MUL, DIV, SHL, SHR, MAX, MIN}
 	for _, opcode := range opcodes {
 		compareIntOp(t, func(left, right *big.Int) ([]byte, error) {
 			return compareFuncBigInt(left, right, opcode)
