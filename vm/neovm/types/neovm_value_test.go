@@ -19,7 +19,6 @@
 package types
 
 import (
-	"fmt"
 	"github.com/ontio/ontology/common"
 	"github.com/stretchr/testify/assert"
 	"math"
@@ -27,17 +26,13 @@ import (
 	"testing"
 )
 
-func TestSerialize(t *testing.T) {
-
-	bsValue, err := VmValueFromBytes([]byte("test"))
-	fmt.Println(common.ToHexString([]byte("test")))
-	assert.Equal(t, err, nil)
+func generateStructValue() *StructValue {
+	bsValue, _ := VmValueFromBytes([]byte("test"))
 	boolValue := VmValueFromBool(true)
 
 	bigin := new(big.Int)
 	bigin.SetInt64(int64(1000))
-	biginValue, err := VmValueFromBigInt(bigin)
-	assert.Equal(t, err, nil)
+	biginValue, _ := VmValueFromBigInt(bigin)
 
 	uint64Value := VmValueFromUint64(uint64(100))
 	s := NewStructValue()
@@ -45,27 +40,64 @@ func TestSerialize(t *testing.T) {
 	s.Append(boolValue)
 	s.Append(biginValue)
 	s.Append(uint64Value)
-	structValue := VmValueFromStructVal(s)
-	sink := new(common.ZeroCopySink)
-	structValue.Serialize(sink)
-	fmt.Println(common.ToHexString(sink.Bytes()))
-	assert.Equal(t, common.ToHexString(sink.Bytes()), "810400047465737401010202e803020164")
+	return s
+}
 
-	structValueStr, err := structValue.ConvertNeoVmValueHexString()
-	fmt.Println("structValueStr:", structValueStr)
+func generateArrayValue() VmValue {
+	bsValue, _ := VmValueFromBytes([]byte("test"))
+	boolValue := VmValueFromBool(true)
 
-	source := common.NewZeroCopySource(sink.Bytes())
-	vs := VmValue{}
-	vs.Deserialize(source)
-	assert.Equal(t, structValue, vs)
+	bigin := new(big.Int)
+	bigin.SetInt64(int64(1000))
+	biginValue, _ := VmValueFromBigInt(bigin)
 
+	uint64Value := VmValueFromUint64(uint64(100))
 	arr := NewArrayValue()
 	arr.Append(bsValue)
 	arr.Append(boolValue)
 	arr.Append(biginValue)
 	arr.Append(uint64Value)
+	return VmValueFromArrayVal(arr)
+}
+
+func generateMapValue() VmValue {
+	bsValue, _ := VmValueFromBytes([]byte("test"))
+	boolValue := VmValueFromBool(true)
+
+	bigin := new(big.Int)
+	bigin.SetInt64(int64(1000))
+	biginValue, _ := VmValueFromBigInt(bigin)
+
+	uint64Value := VmValueFromUint64(uint64(100))
+	arrValue := generateArrayValue()
+	structValue := VmValueFromStructVal(generateStructValue())
+	m := NewMapValue()
+	m.Set(bsValue, arrValue)
+	m.Set(biginValue, structValue)
+	m.Set(uint64Value, boolValue)
+	return VmValueFromMapValue(m)
+}
+
+func TestSerialize(t *testing.T) {
+	structValue := VmValueFromStructVal(generateStructValue())
+	sink := new(common.ZeroCopySink)
+	structValue.Serialize(sink)
+	assert.Equal(t, common.ToHexString(sink.Bytes()), "810400047465737401010202e803020164")
+
+	expected := []string{"74657374","01","e803","64"}
+	struStr, err := structValue.ConvertNeoVmValueHexString()
+	temp := struStr.([]interface{})
+    for i:=0;i<len(temp);i++  {
+    	assert.Equal(t,expected[i], temp[i].(string))
+	}
+	source := common.NewZeroCopySource(sink.Bytes())
+	vs := VmValue{}
+	vs.Deserialize(source)
+	assert.Equal(t, structValue, vs)
+
+
 	sinkArr := new(common.ZeroCopySink)
-	arrValue := VmValueFromArrayVal(arr)
+	arrValue := generateArrayValue()
 	arrValue.Serialize(sinkArr)
 	assert.Equal(t, common.ToHexString(sinkArr.Bytes()), "800400047465737401010202e803020164")
 
@@ -74,18 +106,12 @@ func TestSerialize(t *testing.T) {
 	arrValue2.Deserialize(source)
 	assert.Equal(t, arrValue2, arrValue)
 
-	m := NewMapValue()
-
-	m.Set(bsValue, arrValue)
-	m.Set(biginValue, structValue)
-	m.Set(uint64Value, boolValue)
-
-	mValue := VmValueFromMapValue(m)
+	mValue := generateMapValue()
 	sinkMap := new(common.ZeroCopySink)
 	mValue.Serialize(sinkMap)
 	assert.Equal(t, "82030201640101000474657374800400047465737401010202e8030201640202e803810400047465737401010202e803020164", common.ToHexString(sinkMap.Bytes()))
 
-	arr = NewArrayValue()
+	arr := NewArrayValue()
 	b, _ := new(big.Int).SetString("9923372036854775807", 10)
 	bi, err := VmValueFromBigInt(b)
 	assert.Nil(t, err)
@@ -93,29 +119,21 @@ func TestSerialize(t *testing.T) {
 	val_arr := VmValueFromArrayVal(arr)
 	res_t, err := val_arr.ConvertNeoVmValueHexString()
 	assert.Nil(t, err)
-	fmt.Println("res_t:", res_t)
 	assert.Equal(t, "ffffc58e4ae6b68900", res_t.([]interface{})[0])
+
+	u, _ := common.Uint256FromHexString("a00000000000000000000a000000000000000000000000000000000000000000")
+	val_u := NewInteropValue(&u)
+	vmVal_u := VmValueFromInteropValue(val_u)
+	r, _ := vmVal_u.ConvertNeoVmValueHexString()
+	assert.Equal(t, "0000000000000000000000000000000000000000000a000000000000000000a0", r.(string))
 }
 
 func TestStructValue_Clone(t *testing.T) {
-	bsValue, err := VmValueFromBytes([]byte("test"))
-	assert.Equal(t, err, nil)
-	boolValue := VmValueFromBool(true)
-
-	bigin := new(big.Int)
-	bigin.SetInt64(int64(1000))
-	biginValue, err := VmValueFromBigInt(bigin)
-	assert.Equal(t, err, nil)
-
+	bsValue, _ := VmValueFromBytes([]byte("test"))
 	uint64Value := VmValueFromUint64(uint64(100))
-
 	m := NewMapValue()
 	m.Set(bsValue, bsValue)
-	s := NewStructValue()
-	s.Append(bsValue)
-	s.Append(boolValue)
-	s.Append(biginValue)
-	s.Append(uint64Value)
+	s := generateStructValue()
 	s.Append(VmValueFromMapValue(m))
 	s2, _ := s.Clone()
 	structValue := VmValueFromStructVal(s)
@@ -127,29 +145,9 @@ func TestStructValue_Clone(t *testing.T) {
 }
 
 func TestVmValue_Equals(t *testing.T) {
-	bsValue, err := VmValueFromBytes([]byte("test"))
-	assert.Equal(t, err, nil)
-	boolValue := VmValueFromBool(true)
+	structValue := VmValueFromStructVal(generateStructValue())
 
-	bigin := new(big.Int)
-	bigin.SetInt64(int64(1000))
-	biginValue, err := VmValueFromBigInt(bigin)
-	assert.Equal(t, err, nil)
-
-	uint64Value := VmValueFromUint64(uint64(100))
-	s := NewStructValue()
-	s.Append(bsValue)
-	s.Append(boolValue)
-	s.Append(biginValue)
-	s.Append(uint64Value)
-	structValue := VmValueFromStructVal(s)
-
-	s2 := NewStructValue()
-	s2.Append(bsValue)
-	s2.Append(boolValue)
-	s2.Append(biginValue)
-	s2.Append(uint64Value)
-	structValue2 := VmValueFromStructVal(s2)
+	structValue2 := VmValueFromStructVal(generateStructValue())
 	res := structValue.Equals(structValue2)
 	assert.True(t, res)
 
@@ -167,7 +165,7 @@ func TestVmValue_Equals(t *testing.T) {
 	intero2 := VmValueFromInteropValue(NewInteropValue(nil))
 	assert.False(t, intero.Equals(intero2))
 
-	_, err = intero.AsInteropValue()
+	_, err := intero.AsInteropValue()
 	assert.Nil(t, err)
 	_, err = arr.AsInteropValue()
 	assert.NotNil(t, err)
@@ -199,6 +197,17 @@ func TestVmValue_BuildParamToNative(t *testing.T) {
 	err = res.BuildParamToNative(sink)
 	assert.Nil(t, err)
 	assert.Equal(t, "010109ffffffffffffffff00000568656c6c6f", common.ToHexString(sink.Bytes()))
+
+    m:=NewMapValue()
+    m.Set(bs, bs)
+    m_val := VmValueFromMapValue(m)
+    err = m_val.BuildParamToNative(sink)
+    assert.NotNil(t, err)
+
+    intero := NewInteropValue(nil)
+	intero_val := VmValueFromInteropValue(intero)
+	err=intero_val.BuildParamToNative(sink)
+	assert.NotNil(t, err)
 }
 
 func TestVmValueFromUint64(t *testing.T) {
@@ -242,6 +251,12 @@ func TestVmValue_AsBool(t *testing.T) {
 	in, err := val.AsInt64()
 	assert.Equal(t, in, int64(9223372036854775807))
 
+	bbb:= new(big.Int).SetInt64(math.MaxInt64)
+	val, err = VmValueFromBigInt(bbb)
+	in, err = val.AsInt64()
+	assert.Nil(t, err)
+	assert.Equal(t, in, int64(math.MaxInt64))
+
 	val, err = VmValueFromBytes([]byte("hello"))
 	assert.Nil(t, err)
 	res, err = val.AsBool()
@@ -253,6 +268,11 @@ func TestVmValue_AsBool(t *testing.T) {
 	res, err = val.AsBool()
 	assert.Nil(t, err)
 	assert.Equal(t, true, res)
+
+	intero :=NewInteropValue(nil)
+	intero_val := VmValueFromInteropValue(intero)
+	res, _ = intero_val.AsBool()
+	assert.False(t, res)
 
 	m_old := NewMap()
 	res2, err := m_old.GetBoolean()

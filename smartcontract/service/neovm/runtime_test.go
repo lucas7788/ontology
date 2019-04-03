@@ -48,7 +48,11 @@ func TestRuntimeSerialize(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	struStr, err := scommon.ConvertNeoVmTypeHexString(stru)
-	fmt.Println("struStr:", struStr)
+	expected := []string{"74657374","01","e803","64"}
+	temp := struStr.([]interface{})
+	for i:=0;i<len(temp);i++  {
+		assert.Equal(t,expected[i], temp[i].(string))
+	}
 
 	arr := types.NewArray([]types.StackItems{})
 	arr.Add(bs)
@@ -81,6 +85,11 @@ func TestRuntimeSerialize(t *testing.T) {
 	bss, err := SerializeStackItem(m_old)
 	assert.Nil(t, err)
 	assert.Equal(t, "820100036b65790209ffffc58e4ae6b68900", common.ToHexString(bss))
+
+	u, _ := common.Uint256FromHexString("a00000000000000000000a000000000000000000000000000000000000000000")
+	val_u := types.NewInteropInterface(&u)
+	r,_ :=scommon.ConvertNeoVmTypeHexString(val_u)
+	assert.Equal(t, "0000000000000000000000000000000000000000000a000000000000000000a0", r.(string))
 }
 
 func TestArrayRef(t *testing.T) {
@@ -150,6 +159,5 @@ func TestStructRef(t *testing.T) {
 	map8.Add(bf, map6)
 	map8.Add(bt, map7)
 	map8.Add(ba1, map7)
-
 	assert.False(t, CircularRefAndDepthDetection(map8))
 }
