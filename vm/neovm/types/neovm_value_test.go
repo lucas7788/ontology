@@ -84,17 +84,16 @@ func TestSerialize(t *testing.T) {
 	structValue.Serialize(sink)
 	assert.Equal(t, common.ToHexString(sink.Bytes()), "810400047465737401010202e803020164")
 
-	expected := []string{"74657374","01","e803","64"}
+	expected := []string{"74657374", "01", "e803", "64"}
 	struStr, err := structValue.ConvertNeoVmValueHexString()
 	temp := struStr.([]interface{})
-    for i:=0;i<len(temp);i++  {
-    	assert.Equal(t,expected[i], temp[i].(string))
+	for i := 0; i < len(temp); i++ {
+		assert.Equal(t, expected[i], temp[i].(string))
 	}
 	source := common.NewZeroCopySource(sink.Bytes())
 	vs := VmValue{}
 	vs.Deserialize(source)
 	assert.Equal(t, structValue, vs)
-
 
 	sinkArr := new(common.ZeroCopySink)
 	arrValue := generateArrayValue()
@@ -198,15 +197,15 @@ func TestVmValue_BuildParamToNative(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "010109ffffffffffffffff00000568656c6c6f", common.ToHexString(sink.Bytes()))
 
-    m:=NewMapValue()
-    m.Set(bs, bs)
-    m_val := VmValueFromMapValue(m)
-    err = m_val.BuildParamToNative(sink)
-    assert.NotNil(t, err)
+	m := NewMapValue()
+	m.Set(bs, bs)
+	m_val := VmValueFromMapValue(m)
+	err = m_val.BuildParamToNative(sink)
+	assert.NotNil(t, err)
 
-    intero := NewInteropValue(nil)
+	intero := NewInteropValue(nil)
 	intero_val := VmValueFromInteropValue(intero)
-	err=intero_val.BuildParamToNative(sink)
+	err = intero_val.BuildParamToNative(sink)
 	assert.NotNil(t, err)
 }
 
@@ -251,7 +250,7 @@ func TestVmValue_AsBool(t *testing.T) {
 	in, err := val.AsInt64()
 	assert.Equal(t, in, int64(9223372036854775807))
 
-	bbb:= new(big.Int).SetInt64(math.MaxInt64)
+	bbb := new(big.Int).SetInt64(math.MaxInt64)
 	val, err = VmValueFromBigInt(bbb)
 	in, err = val.AsInt64()
 	assert.Nil(t, err)
@@ -269,7 +268,7 @@ func TestVmValue_AsBool(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, true, res)
 
-	intero :=NewInteropValue(nil)
+	intero := NewInteropValue(nil)
 	intero_val := VmValueFromInteropValue(intero)
 	res, _ = intero_val.AsBool()
 	assert.False(t, res)

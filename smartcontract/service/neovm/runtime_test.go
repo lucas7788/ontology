@@ -48,10 +48,10 @@ func TestRuntimeSerialize(t *testing.T) {
 	assert.Equal(t, err, nil)
 
 	struStr, err := scommon.ConvertNeoVmTypeHexString(stru)
-	expected := []string{"74657374","01","e803","64"}
+	expected := []string{"74657374", "01", "e803", "64"}
 	temp := struStr.([]interface{})
-	for i:=0;i<len(temp);i++  {
-		assert.Equal(t,expected[i], temp[i].(string))
+	for i := 0; i < len(temp); i++ {
+		assert.Equal(t, expected[i], temp[i].(string))
 	}
 
 	arr := types.NewArray([]types.StackItems{})
@@ -88,7 +88,7 @@ func TestRuntimeSerialize(t *testing.T) {
 
 	u, _ := common.Uint256FromHexString("a00000000000000000000a000000000000000000000000000000000000000000")
 	val_u := types.NewInteropInterface(&u)
-	r,_ :=scommon.ConvertNeoVmTypeHexString(val_u)
+	r, _ := scommon.ConvertNeoVmTypeHexString(val_u)
 	assert.Equal(t, "0000000000000000000000000000000000000000000a000000000000000000a0", r.(string))
 }
 
