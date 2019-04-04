@@ -141,6 +141,11 @@ func TestStructValue_Clone(t *testing.T) {
 	mm2.Set(bsValue, uint64Value)
 	structValue2 := VmValueFromStructVal(s2)
 	assert.Equal(t, structValue.Equals(structValue2), true)
+
+	s2.Append(structValue)
+
+	_,err := s2.Clone()
+	assert.Nil(t, err)
 }
 
 func TestVmValue_Equals(t *testing.T) {
