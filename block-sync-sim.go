@@ -164,8 +164,8 @@ func (self *BlockSync) readLoop() {
 	}
 }
 
-func main() {
-	config.DefConfig.P2PNode.NetworkMagic = constants.NETWORK_MAGIC_MAINNET
+func synacFunc() {
+	config.DefConfig.P2PNode.NetworkMagic = constants.NETWORK_MAGIC_POLARIS
 	info := NewBlockHashInfo()
 	conn, err := net.Dial("tcp", "127.0.0.1:20338")
 	checkerr(err)
@@ -189,9 +189,17 @@ func main() {
 	}
 
 	go heartBeatService(conn)
-	go blockSync.syncHash()
-	go blockSync.syncBlock()
+	for i:=0;i<1;i++ {
+		go blockSync.syncHash()
+		go blockSync.syncBlock()
+	}
 	go blockSync.readLoop()
 
+}
+
+func main()  {
+	for i:=0;i<10;i++ {
+		go synacFunc()
+	}
 	waitToExit()
 }
