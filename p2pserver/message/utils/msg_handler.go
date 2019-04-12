@@ -643,13 +643,7 @@ func GetHeadersFromHash(startHash common.Uint256, stopHash common.Uint256) ([]*t
 			log.Debugf("[p2p]net_server GetBlockWithHeight failed with err=%s, hash=%x,height=%d\n", err.Error(), hash, stopHeight+i)
 			return nil, err
 		}
-		sink := common.NewZeroCopySink(nil)
-		header.Serialization(sink)
-		hd := &types.RawHeader{
-			Height:  header.Height,
-			Payload: sink.Bytes(),
-		}
-		headers = append(headers, hd)
+		headers = append(headers, header)
 	}
 
 	return headers, nil

@@ -200,7 +200,7 @@ func (this *P2PServer) OnDelNode(id uint64) {
 }
 
 // OnHeaderReceive adds the header list from network
-func (this *P2PServer) OnHeaderReceive(fromID uint64, headers []*types.Header) {
+func (this *P2PServer) OnHeaderReceive(fromID uint64, headers []*types.RawHeader) {
 	this.blockSync.OnHeaderReceive(fromID, headers)
 }
 
@@ -376,8 +376,8 @@ func (this *P2PServer) connectUpstream() {
 	for _, tn := range np.List {
 		ipAddr, _ := tn.GetAddr16()
 		ip := net.IP(ipAddr[:])
-		addrString := ip.To16().String() + ":" + strconv.Itoa(int(tn.GetSyncPort()))
-		if tn.GetSyncState() == common.ESTABLISH {
+		addrString := ip.To16().String() + ":" + strconv.Itoa(int(tn.GetPort()))
+		if tn.GetState() == common.ESTABLISH {
 			connPeers[addrString] = tn
 		}
 	}
@@ -397,11 +397,11 @@ func (this *P2PServer) connectUpstream() {
 		rand.Seed(time.Now().UnixNano())
 		if len(upstreamDisconn) > 0 {
 			index := rand.Intn(len(upstreamDisconn))
-			go this.network.Connect(upstreamDisconn[index], false)
+			go this.network.Connect(upstreamDisconn[index])
 		}
 	} else { //not found
 		for _, nodeAddr := range upstreamNodes {
-			go this.network.Connect(nodeAddr, false)
+			go this.network.Connect(nodeAddr)
 		}
 	}
 }
@@ -509,7 +509,7 @@ func (this *P2PServer) connectSeedService() {
 	for {
 		select {
 		case <-t.C:
-			this.connectSeeds()
+			//this.connectSeeds()
 			this.connectUpstream()
 			t.Stop()
 			if this.reachMinConnection() {

@@ -28,7 +28,7 @@ import (
 )
 
 type BlkHeader struct {
-	BlkHdr []*ct.Header
+	BlkHdr []*ct.RawHeader
 }
 
 type RawBlockHeader struct {
@@ -72,7 +72,7 @@ func (this *BlkHeader) Deserialization(source *common.ZeroCopySource) error {
 	}
 
 	for i := 0; i < int(count); i++ {
-		var headers ct.Header
+		var headers ct.RawHeader
 		err := headers.Deserialization(source)
 		if err != nil {
 			return fmt.Errorf("deserialze BlkHeader error: %v", err)

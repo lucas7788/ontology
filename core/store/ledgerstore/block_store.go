@@ -29,6 +29,7 @@ import (
 	"github.com/ontio/ontology/core/store/leveldbstore"
 	"github.com/ontio/ontology/core/types"
 	"io"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 //Block store save the data of block & transaction
@@ -228,13 +229,29 @@ func (this *BlockStore) loadHeader(blockHash common.Uint256) (*types.Header, err
 	if err != nil {
 		return nil, err
 	}
-	source := common.NewZeroCopySource(rawHeader.Payload)
-	header := new(types.Header)
-	err = header.Deserialization(source)
-	if err != nil {
-		return nil, err
+	bookkeepers := make([]keypair.PublicKey, 0)
+	for _,bk := range rawHeader.Bookkeepers {
+		pk, err := keypair.DeserializePublicKey(bk)
+		if err != nil {
+			return nil, err
+		}
+		bookkeepers = append(bookkeepers, pk)
 	}
-	return header, nil
+	return &types.Header{
+		Version:          rawHeader.Version,
+		PrevBlockHash:    rawHeader.PrevBlockHash,
+		TransactionsRoot: rawHeader.TransactionsRoot,
+		BlockRoot:        rawHeader.BlockRoot,
+		Timestamp:        rawHeader.Timestamp,
+		Height:           rawHeader.Height,
+		ConsensusData:    rawHeader.ConsensusData,
+		ConsensusPayload: rawHeader.ConsensusPayload,
+		NextBookkeeper:   rawHeader.NextBookkeeper,
+
+		//Program *program.Program
+		Bookkeepers: bookkeepers,
+		SigData:     rawHeader.SigData,
+	}, nil
 }
 
 func (this *BlockStore) loadRawHeader(blockHash common.Uint256) (*types.RawHeader, error) {
