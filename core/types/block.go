@@ -47,10 +47,7 @@ func (b *Block) SerializeExt(sink *common.ZeroCopySink) (uint32, uint32, error) 
 
 	sink.WriteUint32(uint32(len(b.Transactions)))
 	for _, transaction := range b.Transactions {
-		err := transaction.Serialization(sink)
-		if err != nil {
-			return 0, 0, err
-		}
+		transaction.Serialization(sink)
 	}
 
 	return uint32(headerLen), uint32(unsignedLen), nil

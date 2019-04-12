@@ -218,14 +218,7 @@ func (this *Link) writeLoop() {
 
 		sink.Reset()
 		for _, msg := range msgs {
-			pos := sink.Size()
-			err := types.WriteMessage(sink, msg)
-			if err != nil {
-				invalid := sink.Size() - pos
-				sink.BackUp(invalid)
-				log.Debugf("[p2p]error serialize messge ", err.Error())
-				continue
-			}
+			types.WriteMessage(sink, msg)
 		}
 
 		payload := sink.Bytes()
@@ -255,6 +248,7 @@ func (this *Link) writeLoop() {
 		this.cond.Signal() // notify read loop
 	}
 }
+
 
 func (this *Link) Tx(msg types.Message) error {
 	this.lock.Lock()

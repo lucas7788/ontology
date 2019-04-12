@@ -198,6 +198,7 @@ func (bd *Header) Serialization(sink *common.ZeroCopySink) error {
 
 	return err
 }
+
 func (bd *Header) SerializeExt(sink *common.ZeroCopySink) (uint32, error) {
 	pos := sink.Size()
 	bd.serializationUnsigned(sink)
