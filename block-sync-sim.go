@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -18,6 +19,9 @@ import (
 	"github.com/ontio/ontology/p2pserver/message/msg_pack"
 	"github.com/ontio/ontology/p2pserver/message/types"
 )
+
+var BLOCK_NUM int64 = 1000
+var NODE_IP = "127.0.0.1:20338"
 
 type BlockHashInfo struct {
 	hashes     map[uint32]common.Uint256
@@ -157,8 +161,9 @@ func (self *BlockSync) readLoop() {
 			}
 		case *types.Block:
 			count, tb := self.IncBlockCount(int64(size))
-			if count%1000 == 0 {
+			if count== BLOCK_NUM {
 				fmt.Printf("received block:%d, size:%d\n", count, tb)
+				fmt.Println("EndTime:", time.Now())
 			}
 		}
 	}
@@ -167,7 +172,7 @@ func (self *BlockSync) readLoop() {
 func synacFunc() {
 	config.DefConfig.P2PNode.NetworkMagic = constants.NETWORK_MAGIC_POLARIS
 	info := NewBlockHashInfo()
-	conn, err := net.Dial("tcp", "127.0.0.1:20338")
+	conn, err := net.Dial("tcp", NODE_IP)
 	checkerr(err)
 
 	var version types.Version
@@ -178,9 +183,9 @@ func synacFunc() {
 	}
 	WriteMessage(conn, &version)
 
-	msg, _, err := types.ReadMessage(conn)
+	_, _, err = types.ReadMessage(conn)
 	checkerr(err)
-	fmt.Printf("receive msg:%v", msg)
+	//fmt.Printf("receive msg:%v", msg)
 	WriteMessage(conn, msgpack.NewVerAck(false))
 
 	blockSync := BlockSync{
@@ -189,16 +194,34 @@ func synacFunc() {
 	}
 
 	go heartBeatService(conn)
-	for i:=0;i<1;i++ {
-		go blockSync.syncHash()
-		go blockSync.syncBlock()
-	}
+	go blockSync.syncHash()
+	go blockSync.syncBlock()
 	go blockSync.readLoop()
 
 }
 
 func main()  {
-	for i:=0;i<10;i++ {
+	var n = 0
+	arg_num := len(os.Args)
+	fmt.Println(os.Args)
+	if arg_num == 1 {
+		n=1
+	} else if arg_num == 2{
+		n,_ = strconv.Atoi(os.Args[1])
+	} else if arg_num == 3 {
+		n,_ = strconv.Atoi(os.Args[1])
+		t,_ := strconv.Atoi(os.Args[2])
+		BLOCK_NUM = int64(t)
+	} else if arg_num == 4 {
+		n,_ = strconv.Atoi(os.Args[1])
+		t,_ := strconv.Atoi(os.Args[2])
+		BLOCK_NUM = int64(t)
+		NODE_IP = os.Args[3]
+	}
+	fmt.Printf("Node num:%d, BlockNum:%d", n, BLOCK_NUM)
+	fmt.Println("")
+	fmt.Println("StartTime:", time.Now())
+	for i:=0;i<n;i++ {
 		go synacFunc()
 	}
 	waitToExit()
