@@ -151,7 +151,7 @@ func (self *BlockSync) readLoop() {
 	conn := self.conn
 	info := self.info
 	for {
-		msg, size, err := types.ReadMessage(conn)
+		msg, _, err := types.ReadMessage(conn)
 		checkerr(err)
 		switch message := msg.(type) {
 		case *types.BlkHeader:
@@ -160,11 +160,7 @@ func (self *BlockSync) readLoop() {
 				info.SetHash(header.Height, header.Hash())
 			}
 		case *types.Block:
-			count, tb := self.IncBlockCount(int64(size))
-			if count%BLOCK_NUM==0 {
-				fmt.Printf("received block:%d, size:%d\n", count, tb)
-				fmt.Println("EndTime:", time.Now())
-			}
+			blockNumTotal.Inc()
 		}
 	}
 }
@@ -200,6 +196,31 @@ func synacFunc() {
 
 }
 
+type BlockNumTotal struct {
+	blockNum int
+	lock *sync.RWMutex
+}
+
+func (self *BlockNumTotal) Inc() {
+	self.lock.Lock()
+	self.blockNum += 1
+	self.lock.Unlock()
+}
+func (self *BlockNumTotal) GetBlockNum() int {
+	return self.blockNum
+}
+func (self *BlockNumTotal) ReadBlockNum() {
+	self.lock.RLock()
+	fmt.Println("blockNumTotal:", self.blockNum)
+	self.lock.RUnlock()
+	fmt.Println(time.Now())
+}
+
+var blockNumTotal = BlockNumTotal{
+	blockNum:0,
+	lock: new(sync.RWMutex),
+}
+
 func main()  {
 	var n = 0
 	arg_num := len(os.Args)
@@ -224,5 +245,18 @@ func main()  {
 	for i:=0;i<n;i++ {
 		go synacFunc()
 	}
+
+	go tickExec()
+
 	waitToExit()
+}
+
+func tickExec() {
+	t := time.NewTicker(time.Second*10)
+	for {
+		select {
+		case <-t.C:
+			blockNumTotal.ReadBlockNum()
+		}
+	}
 }
