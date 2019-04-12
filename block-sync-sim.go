@@ -161,7 +161,7 @@ func (self *BlockSync) readLoop() {
 			}
 		case *types.Block:
 			count, tb := self.IncBlockCount(int64(size))
-			if count== BLOCK_NUM {
+			if count%BLOCK_NUM==0 {
 				fmt.Printf("received block:%d, size:%d\n", count, tb)
 				fmt.Println("EndTime:", time.Now())
 			}
