@@ -144,7 +144,7 @@ func TestStructValue_Clone(t *testing.T) {
 
 	s2.Append(structValue)
 
-	_,err := s2.Clone()
+	_, err := s2.Clone()
 	assert.Nil(t, err)
 }
 
