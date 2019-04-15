@@ -453,9 +453,9 @@ func VerAckHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, arg
 				go p2p.Connect(nodeConsensusAddr, true)
 			}
 		}
-
-		msg := msgpack.NewAddrReq()
-		go p2p.Send(remotePeer, msg, false)
+		//do not request address, only sync block from upstream
+		//msg := msgpack.NewAddrReq()
+		//go p2p.Send(remotePeer, msg, false)
 	}
 
 }
