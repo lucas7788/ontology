@@ -10,6 +10,6 @@ go:
   - 1.10.x
 
 script:
-  - make
+  - make all-cross
   - bash ./.travis.gofmt.sh
   - bash ./.travis.gotest.sh
