@@ -42,7 +42,7 @@ func (this *NbrPeers) Broadcast(msg types.Message) {
 	defer this.RUnlock()
 	for _, node := range this.List {
 		if node.linkState == common.ESTABLISH && node.GetRelay() == true {
-			node.SendRaw(msg.CmdType(), sink.Bytes())
+			node.Send(msg)
 		}
 	}
 }

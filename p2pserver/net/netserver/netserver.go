@@ -298,7 +298,7 @@ func (this *NetServer) Connect(addr string) error {
 	remotePeer.Link.SetAddr(addr)
 	remotePeer.Link.SetConn(conn)
 	remotePeer.AttachChan(this.NetChan)
-	go remotePeer.Link.Rx()
+	go remotePeer.Link.RunReadWriteLoop()
 	remotePeer.SetState(common.HAND)
 
 	version := msgpack.NewVersion(this, blockrelayer.DefStorage.CurrentHeight())
@@ -409,7 +409,45 @@ func (this *NetServer) startNetAccept(listener net.Listener) {
 		remotePeer.Link.SetAddr(addr)
 		remotePeer.Link.SetConn(conn)
 		remotePeer.AttachChan(this.NetChan)
-		go remotePeer.Link.Rx()
+		go remotePeer.Link.RunReadWriteLoop()
+	}
+}
+
+//startConsAccept accepts the consensus connnection from the inbound peer
+func (this *NetServer) startConsAccept(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Error("[p2p]error accepting ", err.Error())
+			return
+		}
+		log.Debug("[p2p]remote cons node connect with ",
+			conn.RemoteAddr(), conn.LocalAddr())
+		if !this.AddrValid(conn.RemoteAddr().String()) {
+			log.Warnf("[p2p]remote %s not in reserved list, close it ", conn.RemoteAddr())
+			conn.Close()
+			continue
+		}
+
+		remoteIp, err := common.ParseIPAddr(conn.RemoteAddr().String())
+		if err != nil {
+			log.Warn("[p2p]parse ip error ", err.Error())
+			conn.Close()
+			continue
+		}
+		if !this.IsIPInInConnRecord(remoteIp) {
+			conn.Close()
+			continue
+		}
+
+		remotePeer := peer.NewPeer()
+		addr := conn.RemoteAddr().String()
+		this.AddPeerAddress(addr, remotePeer)
+
+		remotePeer.Link.SetAddr(addr)
+		remotePeer.Link.SetConn(conn)
+		remotePeer.AttachChan(this.NetChan)
+		go remotePeer.Link.RunReadWriteLoop()
 	}
 }
 
