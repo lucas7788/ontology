@@ -499,10 +499,9 @@ type RawBlockMsg struct {
 }
 
 //Serialize message payload
-func (this *RawBlockMsg) Serialization(sink *common.ZeroCopySink) error {
+func (this *RawBlockMsg) Serialization(sink *common.ZeroCopySink) {
 	sink.WriteBytes(this.block.Payload)
 	sink.WriteHash(this.MerkleRoot)
-	return nil
 }
 
 func (this *RawBlockMsg) CmdType() string {
