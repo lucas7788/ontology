@@ -584,6 +584,10 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block) error {
 		return fmt.Errorf("SaveCurrentBlock error %s", err)
 	}
 
+	if blockHeight >=2981152 {
+		panic("2981152")
+	}
+
 	stateHash := overlay.ChangeHash()
 	log.Debugf("the state transition hash of block %d is:%s", blockHeight, stateHash.ToHexString())
 	overlay.CommitTo()

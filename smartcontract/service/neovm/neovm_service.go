@@ -21,6 +21,7 @@ package neovm
 import (
 	"bytes"
 	"fmt"
+	"os"
 
 	"github.com/ontio/ontology-crypto/keypair"
 	scommon "github.com/ontio/ontology/common"
@@ -156,10 +157,12 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 				return nil, ERR_CHECK_STACK_SIZE
 			}
 		}
+		name := vm.OpExecList[this.Engine.OpCode].Name
 		if this.Engine.OpCode >= vm.PUSHBYTES1 && this.Engine.OpCode <= vm.PUSHBYTES75 {
 			if !this.ContextRef.CheckUseGas(OPCODE_GAS) {
 				return nil, ERR_GAS_INSUFFICIENT
 			}
+			name = "pushbytes"
 		} else {
 			if err := this.Engine.ValidateOp(); err != nil {
 				return nil, err
@@ -172,6 +175,13 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 				return nil, ERR_GAS_INSUFFICIENT
 			}
 		}
+
+		t, _ := Dump(this.Engine.EvaluationStack.GetE())
+		_, _ = fmt.Fprintln(os.Stderr, "EvalStack:", t)
+		t2, _ := Dump(this.Engine.AltStack.GetE())
+		_, _ = fmt.Fprintln(os.Stderr, "AltStack:", t2)
+		_, _ = fmt.Fprintln(os.Stderr, "opExec:", name)
+
 		switch this.Engine.OpCode {
 		case vm.VERIFY:
 			if vm.EvaluationStackCount(this.Engine) < 3 {

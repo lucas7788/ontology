@@ -27,7 +27,9 @@ const initStackCap = 16 // to avoid reallocation
 type RandomAccessStack struct {
 	e []types.StackItems
 }
-
+func (r *RandomAccessStack) GetE() []types.StackItems {
+	return r.e
+}
 func NewRandAccessStack() *RandomAccessStack {
 	var ras RandomAccessStack
 	ras.e = make([]types.StackItems, 0, initStackCap)
