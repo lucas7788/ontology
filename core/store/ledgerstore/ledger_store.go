@@ -721,6 +721,9 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	hash := result.WriteSet.Hash()
 	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
 
+	if blockHeight >=2981152 {
+		panic("2981152")
+	}
 	result.WriteSet.ForEach(func(key, val []byte) {
 		if len(val) == 0 {
 			this.stateStore.BatchDeleteRawKey(key)
