@@ -505,22 +505,22 @@ func (this *LedgerStoreImp) AddHeaders(headers []*types.Header) error {
 //AddBlock add the block to store.
 //When the block is not the next block, it will be cache. until the missing block arrived
 func (this *LedgerStoreImp) AddBlock(block *types.Block) error {
-	currBlockHeight := this.GetCurrentBlockHeight()
-	blockHeight := block.Header.Height
-	if blockHeight <= currBlockHeight {
-		return nil
-	}
-	nextBlockHeight := currBlockHeight + 1
-	if blockHeight != nextBlockHeight {
-		return fmt.Errorf("block height %d not equal next block height %d", blockHeight, nextBlockHeight)
-	}
-	var err error
-	this.vbftPeerInfoblock, err = this.verifyHeader(block.Header, this.vbftPeerInfoblock)
-	if err != nil {
-		return fmt.Errorf("verifyHeader error %s", err)
-	}
+	//currBlockHeight := this.GetCurrentBlockHeight()
+	//blockHeight := block.Header.Height
+	//if blockHeight <= currBlockHeight {
+	//	return nil
+	//}
+	//nextBlockHeight := currBlockHeight + 1
+	//if blockHeight != nextBlockHeight {
+	//	return fmt.Errorf("block height %d not equal next block height %d", blockHeight, nextBlockHeight)
+	//}
+	//var err error
+	//this.vbftPeerInfoblock, err = this.verifyHeader(block.Header, this.vbftPeerInfoblock)
+	//if err != nil {
+	//	return fmt.Errorf("verifyHeader error %s", err)
+	//}
 
-	err = this.saveBlock(block)
+	err := this.saveBlock(block)
 	if err != nil {
 		return fmt.Errorf("saveBlock error %s", err)
 	}
@@ -574,15 +574,19 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block) error {
 		}
 	}
 
-	err := this.stateStore.AddMerkleTreeRoot(block.Header.TransactionsRoot)
-	if err != nil {
-		return fmt.Errorf("AddMerkleTreeRoot error %s", err)
-	}
+	//err := this.stateStore.AddMerkleTreeRoot(block.Header.TransactionsRoot)
+	//if err != nil {
+	//	return fmt.Errorf("AddMerkleTreeRoot error %s", err)
+	//}
 
-	err = this.stateStore.SaveCurrentBlock(blockHeight, blockHash)
+	err := this.stateStore.SaveCurrentBlock(blockHeight, blockHash)
 	if err != nil {
 		return fmt.Errorf("SaveCurrentBlock error %s", err)
 	}
+
+
+	hash := overlay.Hash()
+	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
 
 	if blockHeight >=2981152 {
 		panic("2981152")

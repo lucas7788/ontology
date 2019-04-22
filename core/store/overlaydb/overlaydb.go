@@ -101,6 +101,10 @@ func (self *OverlayDB) ChangeHash() comm.Uint256 {
 	return hash
 }
 
+func (self *OverlayDB) Hash() []byte {
+	return self.memdb.Hash()
+}
+
 // param key is referenced by iterator
 func (self *OverlayDB) NewIterator(key []byte) common.StoreIterator {
 	prefixRange := util.BytesPrefix(key)
