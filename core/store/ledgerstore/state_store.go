@@ -108,9 +108,9 @@ func (self *StateStore) init(currBlockHeight uint32) error {
 	if err != nil && err != scom.ErrNotFound {
 		return err
 	}
-	if treeSize > 0 && treeSize != currBlockHeight+1 {
-		return fmt.Errorf("merkle tree size is inconsistent with blockheight: %d", currBlockHeight+1)
-	}
+	//if treeSize > 0 && treeSize != currBlockHeight+1 {
+	//	return fmt.Errorf("merkle tree size is inconsistent with blockheight: %d", currBlockHeight+1)
+	//}
 	self.merkleHashStore, err = merkle.NewFileHashStore(self.merklePath, treeSize)
 	if err != nil {
 		log.Warn("merkle store is inconsistent with ChainStore. persistence will be disabled")
@@ -122,9 +122,9 @@ func (self *StateStore) init(currBlockHeight uint32) error {
 		if err != nil && err != scom.ErrNotFound {
 			return err
 		}
-		if treeSize > 0 && treeSize != currBlockHeight-self.stateHashCheckHeight+1 {
-			return fmt.Errorf("merkle tree size is inconsistent with blockheight: %d", currBlockHeight+1)
-		}
+		//if treeSize > 0 && treeSize != currBlockHeight-self.stateHashCheckHeight+1 {
+		//	return fmt.Errorf("merkle tree size is inconsistent with blockheight: %d", currBlockHeight+1)
+		//}
 		self.deltaMerkleTree = merkle.NewTree(treeSize, hashes, nil)
 	}
 	return nil
