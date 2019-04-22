@@ -701,22 +701,25 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 		SaveNotify(this.eventStore, notify.TxHash, notify)
 	}
 
-	err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
-	if err != nil {
-		return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
-	}
+	//err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
+	//
+	//err = this.stateStore.AddBlockMerkleTreeRoot(block.Header.TransactionsRoot)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
 
-	err = this.stateStore.AddBlockMerkleTreeRoot(block.Header.TransactionsRoot)
-	if err != nil {
-		return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
-	}
-
-	err = this.stateStore.SaveCurrentBlock(blockHeight, blockHash)
+	err := this.stateStore.SaveCurrentBlock(blockHeight, blockHash)
 	if err != nil {
 		return fmt.Errorf("SaveCurrentBlock error %s", err)
 	}
 
 	log.Debugf("the state transition hash of block %d is:%s", blockHeight, result.Hash.ToHexString())
+
+	hash := result.WriteSet.Hash()
+	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
 
 	result.WriteSet.ForEach(func(key, val []byte) {
 		if len(val) == 0 {
