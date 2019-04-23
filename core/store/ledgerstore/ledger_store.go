@@ -700,7 +700,7 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	for _, notify := range result.Notify {
 		SaveNotify(this.eventStore, notify.TxHash, notify)
 	}
-
+    neovm.PrintOpcode = true
 	//err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
 	//if err != nil {
 	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
