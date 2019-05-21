@@ -5,10 +5,17 @@ import (
 	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/core/genesis"
 	"github.com/ontio/ontology/core/ledger"
+	"github.com/ontio/ontology/core/store/ledgerstore"
+	"os"
 )
 
 func main() {
-	hash := ledger.DefLedger.GetBlockHash(1)
+	initLedger()
+	blockStore, err := ledgerstore.NewBlockStore(fmt.Sprintf("%s%s%s", "./Chain", string(os.PathSeparator), ledgerstore.DBDirBlock), true)
+	if err != nil {
+		return
+	}
+	hash,_ := blockStore.GetBlockHash(1)
 	fmt.Println("hash:", hash)
 	block,_ := ledger.DefLedger.GetBlockByHash(hash)
 	ledger.DefLedger.ExecuteBlock(block)
