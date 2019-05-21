@@ -97,7 +97,7 @@ func StorageGet(service *NeoVmService, engine *vm.ExecutionEngine) error {
 		return err
 	}
 
-	raw, err := service.CacheDB.Get(genStorageKey(context.Address, ba))
+	raw, err := service.CacheDB.Get(genStorageKey(context.Address, ba), service.Height)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func StorageGetReadOnlyContext(service *NeoVmService, engine *vm.ExecutionEngine
 }
 
 func checkStorageContext(service *NeoVmService, context *StorageContext) error {
-	item, err := service.CacheDB.GetContract(context.Address)
+	item, err := service.CacheDB.GetContract(context.Address, service.Height)
 	if err != nil || item == nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[CheckStorageContext] get context fail!")
 	}

@@ -100,7 +100,7 @@ func (self *StateStore) HandleDeployTransaction(store store.LedgerStore, overlay
 	address := deploy.Address()
 	log.Infof("deploy contract address:%s", address.ToHexString())
 	// store contract message
-	dep, err := cache.GetContract(address)
+	dep, err := cache.GetContract(address, block.Header.Height)
 	if err != nil {
 		return err
 	}

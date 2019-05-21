@@ -72,7 +72,7 @@ func registerCandidate(native *native.NativeService, flag string) error {
 		return fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
 	//get black list
-	blackList, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(BLACK_LIST), peerPubkeyPrefix))
+	blackList, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(BLACK_LIST), peerPubkeyPrefix),native.Height)
 	if err != nil {
 		return fmt.Errorf("native.CacheDB.Get, get BlackList error: %v", err)
 	}

@@ -88,7 +88,7 @@ func (this *LinkedlistNode) Deserialize(r []byte) error {
 }
 
 func getListHead(native *native.NativeService, index []byte) ([]byte, error) {
-	head, err := native.CacheDB.Get(index)
+	head, err := native.CacheDB.Get(index, native.Height)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func getListHead(native *native.NativeService, index []byte) ([]byte, error) {
 
 func getListNode(native *native.NativeService, index []byte, item []byte) (*LinkedlistNode, error) {
 	node := new(LinkedlistNode)
-	data, err := native.CacheDB.Get(append(index, item...))
+	data, err := native.CacheDB.Get(append(index, item...), native.Height)
 	if err != nil {
 		return nil, err
 	}

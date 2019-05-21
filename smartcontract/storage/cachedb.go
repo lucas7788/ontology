@@ -83,8 +83,8 @@ func (self *CacheDB) put(prefix common.DataEntryPrefix, key []byte, value []byte
 	self.memdb.Put(self.keyScratch, value)
 }
 
-func (self *CacheDB) GetContract(addr comm.Address) (*payload.DeployCode, error) {
-	value, err := self.get(common.ST_CONTRACT, addr[:])
+func (self *CacheDB) GetContract(addr comm.Address, height uint32) (*payload.DeployCode, error) {
+	value, err := self.get(common.ST_CONTRACT, addr[:], height)
 	if err != nil {
 		return nil, err
 	}
@@ -118,15 +118,15 @@ func (self *CacheDB) DeleteContract(address comm.Address) {
 	self.delete(common.ST_CONTRACT, address[:])
 }
 
-func (self *CacheDB) Get(key []byte) ([]byte, error) {
-	return self.get(common.ST_STORAGE, key)
+func (self *CacheDB) Get(key []byte, height uint32) ([]byte, error) {
+	return self.get(common.ST_STORAGE, key, height)
 }
 
-func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte) ([]byte, error) {
+func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte, height uint32) ([]byte, error) {
 	self.keyScratch = makePrefixedKey(self.keyScratch, byte(prefix), key)
 	value, unknown := self.memdb.Get(self.keyScratch)
 	if unknown {
-		v, err := self.backend.Get(self.keyScratch)
+		v, err := self.backend.Get(self.keyScratch, height)
 		if err != nil {
 			return nil, err
 		}
