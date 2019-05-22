@@ -27,9 +27,10 @@ import (
 )
 
 type OverlayDB struct {
-	store common.PersistStore
-	memdb *MemDB
-	dbErr error
+	store     common.PersistStore
+	memdb     *MemDB
+	readCache *MemDB
+	dbErr     error
 }
 
 const initCap = 4 * 1024 * 1024
@@ -37,8 +38,9 @@ const initkvNum = 1024
 
 func NewOverlayDB(store common.PersistStore) *OverlayDB {
 	return &OverlayDB{
-		store: store,
-		memdb: NewMemDB(initCap, initkvNum),
+		store:     store,
+		memdb:     NewMemDB(initCap, initkvNum),
+		readCache: NewMemDB(initCap, initkvNum),
 	}
 }
 
@@ -70,8 +72,12 @@ func (self *OverlayDB) Get(key []byte, height uint32) (value []byte, err error) 
 		self.dbErr = err
 		return nil, err
 	}
+	self.readCache.Put(key, value)
 
 	return
+}
+func (self *OverlayDB) GetReadCache() *MemDB {
+	return self.readCache
 }
 
 func (self *OverlayDB) Put(key []byte, value []byte) {

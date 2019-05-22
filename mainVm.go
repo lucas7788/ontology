@@ -20,7 +20,6 @@ func main() {
 	block,_ := ledger.DefLedger.GetBlockByHash(hash)
 	ledger.DefLedger.ExecuteBlock(block)
 }
-
 func initLedger()  {
 	var err error
 	dbDir := "./Chain"

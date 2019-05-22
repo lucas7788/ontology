@@ -28,7 +28,7 @@ import (
 )
 
 func GetStorageItem(native *native.NativeService, key []byte) (*cstates.StorageItem, error) {
-	store, err := native.CacheDB.Get(key,native.Height)
+	store, err := native.CacheDB.Get(key, native.Height)
 	if err != nil {
 		return nil, errors.NewDetailErr(err, errors.ErrNoCode, "[GetStorageItem] storage error!")
 	}

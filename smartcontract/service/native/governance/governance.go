@@ -167,7 +167,7 @@ func InitConfig(native *native.NativeService) ([]byte, error) {
 	contract := native.ContextRef.CurrentContext().ContractAddress
 
 	// check if initConfig is already execute
-	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)),native.Height)
+	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)), native.Height)
 	if err != nil {
 		return utils.BYTE_FALSE, fmt.Errorf("getGovernanceView, get governanceViewBytes error: %v", err)
 	}

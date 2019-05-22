@@ -43,7 +43,7 @@ func GetPeerPoolMap(native *native.NativeService, contract common.Address, view 
 	if err != nil {
 		return nil, fmt.Errorf("getUint32Bytes, getUint32Bytes error: %v", err)
 	}
-	peerPoolMapBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_POOL), viewBytes),native.Height)
+	peerPoolMapBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_POOL), viewBytes), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getPeerPoolMap, get all peerPoolMap error: %v", err)
 	}
@@ -76,7 +76,7 @@ func putPeerPoolMap(native *native.NativeService, contract common.Address, view 
 }
 
 func GetGovernanceView(native *native.NativeService, contract common.Address) (*GovernanceView, error) {
-	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)),native.Height)
+	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getGovernanceView, get governanceViewBytes error: %v", err)
 	}
@@ -284,7 +284,7 @@ func getGlobalParam2(native *native.NativeService, contract common.Address) (*Gl
 		return nil, fmt.Errorf("getGlobalParam, getGlobalParam error: %v", err)
 	}
 
-	globalParam2Bytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GLOBAL_PARAM2)),native.Height)
+	globalParam2Bytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GLOBAL_PARAM2)), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getGlobalParam2, get globalParam2Bytes error: %v", err)
 	}
@@ -445,7 +445,7 @@ func putPreConfig(native *native.NativeService, contract common.Address, preConf
 }
 
 func getCandidateIndex(native *native.NativeService, contract common.Address) (uint32, error) {
-	candidateIndexBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(CANDIDITE_INDEX)),native.Height)
+	candidateIndexBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(CANDIDITE_INDEX)), native.Height)
 	if err != nil {
 		return 0, fmt.Errorf("native.CacheDB.Get, get candidateIndex error: %v", err)
 	}
@@ -474,7 +474,7 @@ func putCandidateIndex(native *native.NativeService, contract common.Address, ca
 }
 
 func getSplitFee(native *native.NativeService, contract common.Address) (uint64, error) {
-	splitFeeBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_FEE)),native.Height)
+	splitFeeBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_FEE)), native.Height)
 	if err != nil {
 		return 0, fmt.Errorf("native.CacheDB.Get, get splitFeeBytes error: %v", err)
 	}
@@ -502,7 +502,7 @@ func putSplitFee(native *native.NativeService, contract common.Address, splitFee
 }
 
 func getSplitFeeAddress(native *native.NativeService, contract common.Address, address common.Address) (*SplitFeeAddress, error) {
-	splitFeeAddressBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_FEE_ADDRESS), address[:]),native.Height)
+	splitFeeAddressBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_FEE_ADDRESS), address[:]), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("native.CacheDB.Get, get splitFeeAddressBytes error: %v", err)
 	}
@@ -538,7 +538,7 @@ func getAuthorizeInfo(native *native.NativeService, contract common.Address, pee
 		return nil, fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
 	authorizeInfoBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, AUTHORIZE_INFO_POOL,
-		peerPubkeyPrefix, address[:]),native.Height)
+		peerPubkeyPrefix, address[:]), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("get authorizeInfoBytes error: %v", err)
 	}
@@ -578,7 +578,7 @@ func getPenaltyStake(native *native.NativeService, contract common.Address, peer
 		return nil, fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
 	penaltyStakeBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PENALTY_STAKE),
-		peerPubkeyPrefix),native.Height)
+		peerPubkeyPrefix), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("get authorizeInfoBytes error: %v", err)
 	}
@@ -613,7 +613,7 @@ func putPenaltyStake(native *native.NativeService, contract common.Address, pena
 
 func getTotalStake(native *native.NativeService, contract common.Address, address common.Address) (*TotalStake, error) {
 	totalStakeBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(TOTAL_STAKE),
-		address[:]),native.Height)
+		address[:]), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("get authorizeInfoBytes error: %v", err)
 	}
@@ -643,7 +643,7 @@ func putTotalStake(native *native.NativeService, contract common.Address, totalS
 }
 
 func getSplitCurve(native *native.NativeService, contract common.Address) (*SplitCurve, error) {
-	splitCurveBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_CURVE)),native.Height)
+	splitCurveBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(SPLIT_CURVE)), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getSplitCurve, get splitCurveBytes error: %v", err)
 	}
@@ -715,7 +715,7 @@ func getPeerAttributes(native *native.NativeService, contract common.Address, pe
 	if err != nil {
 		return nil, fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
-	peerAttributesBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_ATTRIBUTES), peerPubkeyPrefix),native.Height)
+	peerAttributesBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_ATTRIBUTES), peerPubkeyPrefix), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("getPeerAttributes, native.CacheDB.Get error: %v", err)
 	}
@@ -766,7 +766,7 @@ func getPromisePos(native *native.NativeService, contract common.Address, peerPu
 	if err != nil {
 		return nil, fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
-	promisePosBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PROMISE_POS), peerPubkeyPrefix),native.Height)
+	promisePosBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PROMISE_POS), peerPubkeyPrefix), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("get promisePosBytes error: %v", err)
 	}
@@ -796,7 +796,7 @@ func putPromisePos(native *native.NativeService, contract common.Address, promis
 }
 
 func getGasAddress(native *native.NativeService, contract common.Address) (*GasAddress, error) {
-	gasAddressBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GAS_ADDRESS)),native.Height)
+	gasAddressBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GAS_ADDRESS)), native.Height)
 	if err != nil {
 		return nil, fmt.Errorf("get gasAddressBytes error: %v", err)
 	}

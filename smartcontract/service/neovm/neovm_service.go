@@ -129,6 +129,7 @@ type NeoVmService struct {
 	Engine        *vm.ExecutionEngine
 	PreExec       bool
 }
+
 var PrintOpcode = false
 
 // Invoke a smart contract
@@ -183,7 +184,6 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 			_, _ = fmt.Fprintln(os.Stderr, "AltStack:", t2)
 			_, _ = fmt.Fprintln(os.Stderr, "opExec:", name)
 		}
-
 
 		switch this.Engine.OpCode {
 		case vm.VERIFY:
