@@ -30,7 +30,7 @@ import (
 )
 
 func checkIDExistence(srvc *native.NativeService, encID []byte) bool {
-	val, err := srvc.CacheDB.Get(encID, srvc.Height)
+	val, err := srvc.CacheDB.Get(encID)
 	if err == nil {
 		val, err := states.GetValueFromRawStorageItem(val)
 		if err == nil {

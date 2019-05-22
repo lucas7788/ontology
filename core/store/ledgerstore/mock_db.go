@@ -24,15 +24,15 @@ func (self *MockDBStore) Put(key []byte, value []byte) error {
 }
 
 func (self *MockDBStore) Get(key []byte) ([]byte, error) {
-	return self.Get(key)
+	return self.store.Get(key)
 }
 
 func (self *MockDBStore) Has(key []byte) (bool, error) {
-	return self.Has(key)
+	return self.store.Has(key)
 }
 
 func (self *MockDBStore) Delete(key []byte) error {
-	return self.Delete(key)
+	return self.store.Delete(key)
 }
 
 func (self *MockDBStore) NewBatch() {
@@ -76,8 +76,11 @@ func (self *MockDB) Put(key []byte, value []byte) error {
 }
 
 func (self *MockDB) Get(key []byte) ([]byte, error) {
-	value, _ := self.db.Get(key)
-	return value, nil
+	value, unknow := self.db.Get(key)
+	if unknow == false {
+		return value, nil
+	}
+	return nil, nil
 }
 
 func (self *MockDB) Has(key []byte) (bool, error) {
@@ -118,8 +121,11 @@ func (self *MockDB) NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.O
 	}
 	source := common2.NewZeroCopySource(dataBytes)
 	for {
-		key, _, _, eof := source.NextVarBytes()
-		if eof {
+		key, size, irregular, eof := source.NextVarBytes()
+		if size == 0 {
+			break
+		}
+		if eof || irregular {
 			break
 		}
 		value, _, _, eof := source.NextVarBytes()

@@ -57,7 +57,7 @@ func (self *OverlayDB) SetError(err error) {
 }
 
 // if key is deleted, value == nil
-func (self *OverlayDB) Get(key []byte, height uint32) (value []byte, err error) {
+func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
 	var unknown bool
 	value, unknown = self.memdb.Get(key)
 	if unknown == false {

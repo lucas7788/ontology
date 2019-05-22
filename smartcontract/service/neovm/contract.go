@@ -34,7 +34,7 @@ func ContractCreate(service *NeoVmService, engine *vm.ExecutionEngine) error {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[ContractCreate] contract parameters invalid!")
 	}
 	contractAddress := contract.Address()
-	dep, err := service.CacheDB.GetContract(contractAddress, service.Height)
+	dep, err := service.CacheDB.GetContract(contractAddress)
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[ContractCreate] GetOrAdd error!")
 	}
@@ -88,7 +88,7 @@ func ContractDestory(service *NeoVmService, engine *vm.ExecutionEngine) error {
 		return errors.NewErr("[ContractDestory] current contract context invalid!")
 	}
 	addr := context.ContractAddress
-	contract, err := service.CacheDB.GetContract(addr, service.Height)
+	contract, err := service.CacheDB.GetContract(addr)
 	if err != nil || contract == nil {
 		return errors.NewErr("[ContractDestory] get current contract fail!")
 	}
@@ -125,7 +125,7 @@ func ContractGetStorageContext(service *NeoVmService, engine *vm.ExecutionEngine
 		return errors.NewErr("[GetStorageContext] Pop data not contract!")
 	}
 	address := contractState.Address()
-	item, err := service.CacheDB.GetContract(address, service.Height)
+	item, err := service.CacheDB.GetContract(address)
 	if err != nil || item == nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[GetStorageContext] Get StorageContext nil")
 	}
@@ -209,7 +209,7 @@ func isContractParamValid(engine *vm.ExecutionEngine) (*payload.DeployCode, erro
 }
 
 func isContractExist(service *NeoVmService, contractAddress common.Address) error {
-	item, err := service.CacheDB.GetContract(contractAddress, service.Height)
+	item, err := service.CacheDB.GetContract(contractAddress)
 
 	if err != nil || item != nil {
 		return fmt.Errorf("[Contract] Get contract %x error or contract exist!", contractAddress)

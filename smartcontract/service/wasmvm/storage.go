@@ -76,7 +76,7 @@ func (this *WasmVmService) getstore(engine *exec.ExecutionEngine) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	item, err := this.CacheDB.Get(k, 0)
+	item, err := this.CacheDB.Get(k)
 	if err != nil {
 		return false, err
 	}

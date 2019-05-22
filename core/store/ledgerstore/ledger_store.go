@@ -536,17 +536,17 @@ func (this *LedgerStoreImp) GetStateMerkleRoot(height uint32) (common.Uint256, e
 func (this *LedgerStoreImp) ExecuteBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	this.getSavingBlockLock()
 	defer this.releaseSavingBlockLock()
-	currBlockHeight := this.GetCurrentBlockHeight()
-	blockHeight := block.Header.Height
-	if blockHeight <= currBlockHeight {
-		result.MerkleRoot, err = this.GetStateMerkleRoot(blockHeight)
-		return
-	}
-	nextBlockHeight := currBlockHeight + 1
-	if blockHeight != nextBlockHeight {
-		err = fmt.Errorf("block height %d not equal next block height %d", blockHeight, nextBlockHeight)
-		return
-	}
+	//currBlockHeight := this.GetCurrentBlockHeight()
+	//blockHeight := block.Header.Height
+	//if blockHeight <= currBlockHeight {
+	//	result.MerkleRoot, err = this.GetStateMerkleRoot(blockHeight)
+	//	return
+	//}
+	//nextBlockHeight := currBlockHeight + 1
+	//if blockHeight != nextBlockHeight {
+	//	err = fmt.Errorf("block height %d not equal next block height %d", blockHeight, nextBlockHeight)
+	//	return
+	//}
 
 	result, err = this.executeBlock(block)
 	return
@@ -627,7 +627,7 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
-	if false {
+	if block.Header.Height == 0 && true {
 		mockDB := NewMockDB()
 		overlay = mockDB.NewOverlayDB(block.Header.Height, this.mockDBStore)
 	}
@@ -673,7 +673,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		})
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
-		this.mockDBStore.Put(key, sink.Bytes())
+		this.mockDBStore.BatchPut(key, sink.Bytes())
 
 		//after execute
 		sink = common.NewZeroCopySink(nil)
@@ -686,7 +686,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		key = make([]byte, 5, 5)
 		key[0] = byte(1)
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)
-		this.mockDBStore.Put(key, sink.Bytes())
+		this.mockDBStore.BatchPut(key, sink.Bytes())
 	}
 
 	if block.Header.Height < this.stateHashCheckHeight {

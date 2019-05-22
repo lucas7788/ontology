@@ -167,7 +167,7 @@ func InitConfig(native *native.NativeService) ([]byte, error) {
 	contract := native.ContextRef.CurrentContext().ContractAddress
 
 	// check if initConfig is already execute
-	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)), native.Height)
+	governanceViewBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(GOVERNANCE_VIEW)))
 	if err != nil {
 		return utils.BYTE_FALSE, fmt.Errorf("getGovernanceView, get governanceViewBytes error: %v", err)
 	}
@@ -479,7 +479,7 @@ func ApproveCandidate(native *native.NativeService) ([]byte, error) {
 	if err != nil {
 		return utils.BYTE_FALSE, fmt.Errorf("hex.DecodeString, peerPubkey format error: %v", err)
 	}
-	indexBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_INDEX), peerPubkeyPrefix), native.Height)
+	indexBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(PEER_INDEX), peerPubkeyPrefix))
 	if err != nil {
 		return utils.BYTE_FALSE, fmt.Errorf("native.CacheDB.Get, get indexBytes error: %v", err)
 	}
@@ -690,7 +690,7 @@ func WhiteNode(native *native.NativeService) ([]byte, error) {
 	}
 
 	//check black list
-	blackListBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(BLACK_LIST), peerPubkeyPrefix), native.Height)
+	blackListBytes, err := native.CacheDB.Get(utils.ConcatKey(contract, []byte(BLACK_LIST), peerPubkeyPrefix))
 	if err != nil {
 		return utils.BYTE_FALSE, fmt.Errorf("native.CacheDB.Get, get BlackList error: %v", err)
 	}
