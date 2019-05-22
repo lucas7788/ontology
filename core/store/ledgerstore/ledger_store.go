@@ -120,7 +120,7 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	if err != nil {
 		return nil, err
 	}
-	ledgerStore.mockDBStore = NewMockDB(store, 0)
+	ledgerStore.mockDBStore = NewMockDB(store)
 	eventState, err := NewEventStore(fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirEvent))
 	if err != nil {
 		return nil, fmt.Errorf("NewEventStore error %s", err)
@@ -130,7 +130,7 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	return ledgerStore, nil
 }
 
-func NewMockDB(store *leveldbstore.LevelDBStore,height uint32) *MockDB {
+func NewMockDB(store *leveldbstore.LevelDBStore) *MockDB {
 	return &MockDB{store, nil}
 }
 
@@ -692,7 +692,6 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		this.mockDBStore.Put(key, sink.Bytes())
 	}
 
-
 	if block.Header.Height < this.stateHashCheckHeight {
 		result.MerkleRoot = common.UINT256_EMPTY
 	} else if block.Header.Height == this.stateHashCheckHeight {
@@ -710,7 +709,6 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 	return
 }
-
 
 func calculateTotalStateHash(overlay *overlaydb.OverlayDB) (result common.Uint256, err error) {
 	stateDiff := sha256.New()
@@ -749,7 +747,7 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	for _, notify := range result.Notify {
 		SaveNotify(this.eventStore, notify.TxHash, notify)
 	}
-    neovm.PrintOpcode = false
+	neovm.PrintOpcode = false
 	//err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
 	//if err != nil {
 	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
@@ -772,7 +770,7 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
 	}
 
-	if blockHeight >=2981152 {
+	if blockHeight >= 2981152 {
 		panic("2981152")
 	}
 	result.WriteSet.ForEach(func(key, val []byte) {

@@ -8,9 +8,10 @@ import (
 )
 
 type MockDB struct {
-	store   common.PersistStore
-	db      map[string]string
+	store common.PersistStore
+	db    map[string]string
 }
+
 //Put(key []byte, value []byte) error      //Put the key-value pair to store
 //Get(key []byte) ([]byte, error)          //Get the value if key in store
 //Has(key []byte) (bool, error)            //Whether the key is exist in store
@@ -22,7 +23,7 @@ type MockDB struct {
 //Close() error                            //Close store
 //NewIterator(prefix []byte) StoreIterator
 
-func (self *MockDB) Get(key []byte)([]byte, error) {
+func (self *MockDB) Get(key []byte) ([]byte, error) {
 	val, ok := self.db[string(key)]
 	if ok == false {
 		return nil, common.ErrNotFound
@@ -44,7 +45,7 @@ func (self *MockDB) Has(key []byte) (bool, error) {
 	return self.store.Has(key)
 }
 
-func (self *MockDB)BatchCommit() error {
+func (self *MockDB) BatchCommit() error {
 	return self.store.BatchCommit()
 }
 func (self *MockDB) Close() error {
@@ -66,24 +67,23 @@ func (self *MockDB) NewOverlayDB(height uint32) *overlaydb.OverlayDB {
 	//get before execute data
 	key := make([]byte, 4, 4)
 	binary.LittleEndian.PutUint32(key[:], uint32(height))
-	dataBytes,err := self.store.Get(key)
+	dataBytes, err := self.store.Get(key)
 	if err != nil {
 		return nil
 	}
 	source := common2.NewZeroCopySource(dataBytes)
 	data := make(map[string]string)
 	for {
-		key,_,_,eof := source.NextVarBytes()
+		key, _, _, eof := source.NextVarBytes()
 		if eof {
 			break
 		}
-		value,_,_,eof := source.NextVarBytes()
+		value, _, _, eof := source.NextVarBytes()
 		if eof {
 			break
 		}
 		data[string(key)] = string(value)
 	}
-    self.db = data
+	self.db = data
 	return overlaydb.NewOverlayDB(self)
 }
-

@@ -15,12 +15,12 @@ func main() {
 	if err != nil {
 		return
 	}
-	hash,_ := blockStore.GetBlockHash(1)
+	hash, _ := blockStore.GetBlockHash(1)
 	fmt.Println("hash:", hash)
-	block,_ := ledger.DefLedger.GetBlockByHash(hash)
+	block, _ := ledger.DefLedger.GetBlockByHash(hash)
 	ledger.DefLedger.ExecuteBlock(block)
 }
-func initLedger()  {
+func initLedger() {
 	var err error
 	dbDir := "./Chain"
 	ledger.DefLedger, err = ledger.NewLedger(dbDir, 3000000)
