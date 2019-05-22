@@ -61,17 +61,6 @@ type MockDB struct {
 	db *overlaydb.MemDB
 }
 
-//Put(key []byte, value []byte) error      //Put the key-value pair to store
-//Get(key []byte) ([]byte, error)          //Get the value if key in store
-//Has(key []byte) (bool, error)            //Whether the key is exist in store
-//Delete(key []byte) error                 //Delete the key in store
-//NewBatch()                               //Start commit batch
-//BatchPut(key []byte, value []byte)       //Put a key-value pair to batch
-//BatchDelete(key []byte)                  //Delete the key in batch
-//BatchCommit() error                      //Commit batch to store
-//Close() error                            //Close store
-//NewIterator(prefix []byte) StoreIterator
-
 func NewMockDB() *MockDB {
 	return &MockDB{db: overlaydb.NewMemDB(16*1024, 16)}
 }
