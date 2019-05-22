@@ -87,7 +87,7 @@ type LedgerStoreImp struct {
 	vbftPeerInfoblock    map[string]uint32 //pubInfo save pubkey,peerindex
 	lock                 sync.RWMutex
 	stateHashCheckHeight uint32
-	mockDBStore          *MockDB
+	mockDBStore          *MockDBStore
 }
 
 //NewLedgerStore return LedgerStoreImp instance
@@ -120,7 +120,7 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	if err != nil {
 		return nil, err
 	}
-	ledgerStore.mockDBStore = NewMockDB(store)
+	ledgerStore.mockDBStore = NewMockDBStore(store)
 	eventState, err := NewEventStore(fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirEvent))
 	if err != nil {
 		return nil, fmt.Errorf("NewEventStore error %s", err)
@@ -128,10 +128,6 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	ledgerStore.eventStore = eventState
 
 	return ledgerStore, nil
-}
-
-func NewMockDB(store *leveldbstore.LevelDBStore) *MockDB {
-	return &MockDB{store, nil}
 }
 
 //InitLedgerStoreWithGenesisBlock init the ledger store with genesis block. It's the first operation after NewLedgerStore.
@@ -632,7 +628,8 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
 	if false {
-		overlay = this.mockDBStore.NewOverlayDB(block.Header.Height)
+		mockDB := NewMockDB()
+		overlay = mockDB.NewOverlayDB(block.Header.Height, this.mockDBStore)
 	}
 
 	if block.Header.Height != 0 {
