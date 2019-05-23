@@ -671,7 +671,6 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, hash)
 	}
 
-
 	if MOCKDBStore != nil {
 		MOCKDBStore.NewBatch()
 		//before execute
@@ -707,6 +706,11 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		key[0] = byte(1)
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)
 		MOCKDBStore.BatchPut(key, sink.Bytes())
+
+		//if block.Header.Height == 505 {
+		//	log.Errorf("before: %x, blockHeight: %d\n", readCache.Hash(), block.Header.Height)
+		//	log.Errorf("after: %x, blockHeight: %d\n", result.WriteSet.Hash(), block.Header.Height)
+		//}
 	}
 
 	if block.Header.Height < this.stateHashCheckHeight {

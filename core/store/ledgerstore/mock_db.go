@@ -138,3 +138,32 @@ func NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.OverlayDB {
 	}
 	return overlaydb.NewOverlayDB(mockDB)
 }
+
+func NewOverlayDBAfterExecutor(height uint32, store *MockDBStore) *overlaydb.MemDB {
+	//get after execute data
+	key := make([]byte, 5, 5)
+	key[0] = byte(1)
+	binary.LittleEndian.PutUint32(key[1:], uint32(height))
+	dataBytes, err := store.Get(key)
+	if err != nil {
+		return nil
+	}
+	source := common2.NewZeroCopySource(dataBytes)
+	mockDB := NewMockDB()
+	l, eof := source.NextUint32()
+	if eof {
+		return nil
+	}
+	for i := uint32(0); i < l; i++ {
+		key, _, irregular, eof := source.NextVarBytes()
+		if eof || irregular {
+			break
+		}
+		value, _, _, eof := source.NextVarBytes()
+		if eof {
+			break
+		}
+		mockDB.db.Put(key, value)
+	}
+	return mockDB.db
+}
