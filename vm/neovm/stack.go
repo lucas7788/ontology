@@ -27,6 +27,7 @@ const initStackCap = 16 // to avoid reallocation
 type RandomAccessStack struct {
 	e []types.StackItems
 }
+
 func (r *RandomAccessStack) GetE() []types.StackItems {
 	return r.e
 }
