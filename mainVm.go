@@ -75,6 +75,10 @@ func main() {
 
 	writeSet := overlay.GetWriteSet()
 	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
+
+	memdbAfterExecute := ledgerstore.NewOverlayDBAfterExecutor(Block_Height, mockDBStore)
+	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, memdbAfterExecute.Hash())
+
 }
 
 func initLedgerStore(ledgerStore *ledgerstore.LedgerStoreImp) {
@@ -160,4 +164,3 @@ func refreshGlobalParam(config *smartcontract.Config, cache *storage.CacheDB, st
 	})
 	return nil
 }
-
