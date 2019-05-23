@@ -13,7 +13,6 @@ func main() {
 	hash := ledger.DefLedger.GetBlockHash(0)
 	fmt.Println("hash:", hash)
 	block, _ := ledger.DefLedger.GetBlockByHash(hash)
-	ledger.DefLedger.GetHeaderByHeight(0)
 	ledger.DefLedger.ExecuteBlock(block)
 }
 func initLedger() {

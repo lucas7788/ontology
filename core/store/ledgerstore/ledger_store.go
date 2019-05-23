@@ -627,9 +627,8 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
-	if block.Header.Height == 0 && true {
-		mockDB := NewMockDB()
-		overlay = mockDB.NewOverlayDB(block.Header.Height, this.mockDBStore)
+	if block.Header.Height == 0 && false {
+		overlay = NewOverlayDB(block.Header.Height, this.mockDBStore)
 	}
 
 	if block.Header.Height != 0 {
@@ -662,27 +661,37 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 	if true {
 		this.mockDBStore.NewBatch()
-		sink := common.NewZeroCopySink(nil)
 		//before execute
 		rc := overlay.GetReadCache()
+		tempMap := make(map[string]string)
 		rc.ForEach(func(key, val []byte) {
 			if len(val) != 0 {
-				sink.WriteVarBytes(key)
-				sink.WriteVarBytes(val)
+				tempMap[string(key)] = string(val)
 			}
 		})
+		sink := common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(len(tempMap)))
+		for k, v := range tempMap {
+			sink.WriteVarBytes([]byte(k))
+			sink.WriteVarBytes([]byte(v))
+		}
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
 		this.mockDBStore.BatchPut(key, sink.Bytes())
 
 		//after execute
-		sink = common.NewZeroCopySink(nil)
+		tempMap = make(map[string]string)
 		result.WriteSet.ForEach(func(key, val []byte) {
 			if len(val) != 0 {
-				sink.WriteVarBytes(key)
-				sink.WriteVarBytes(val)
+				tempMap[string(key)] = string(val)
 			}
 		})
+		sink = common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(len(tempMap)))
+		for k, v := range tempMap {
+			sink.WriteVarBytes([]byte(k))
+			sink.WriteVarBytes([]byte(v))
+		}
 		key = make([]byte, 5, 5)
 		key[0] = byte(1)
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)

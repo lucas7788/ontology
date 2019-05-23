@@ -111,7 +111,7 @@ func (self *MockDB) Close() error {
 	return nil
 }
 
-func (self *MockDB) NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.OverlayDB {
+func NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.OverlayDB {
 	//get before execute data
 	key := make([]byte, 4, 4)
 	binary.LittleEndian.PutUint32(key[:], uint32(height))
@@ -120,11 +120,13 @@ func (self *MockDB) NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.O
 		return nil
 	}
 	source := common2.NewZeroCopySource(dataBytes)
-	for {
-		key, size, irregular, eof := source.NextVarBytes()
-		if size == 0 {
-			break
-		}
+	mockDB := NewMockDB()
+	l, eof := source.NextUint32()
+	if eof {
+		return nil
+	}
+	for i := uint32(0); i < l; i++ {
+		key, _, irregular, eof := source.NextVarBytes()
 		if eof || irregular {
 			break
 		}
@@ -132,7 +134,7 @@ func (self *MockDB) NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.O
 		if eof {
 			break
 		}
-		self.db.Put(key, value)
+		mockDB.db.Put(key, value)
 	}
-	return overlaydb.NewOverlayDB(self)
+	return overlaydb.NewOverlayDB(mockDB)
 }
