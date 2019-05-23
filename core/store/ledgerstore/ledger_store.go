@@ -21,7 +21,12 @@ package ledgerstore
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"github.com/syndtr/goleveldb/leveldb"
+	errors2 "github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/syndtr/goleveldb/leveldb/filter"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"hash"
 	"math"
 	"os"
@@ -68,6 +73,9 @@ var (
 	DBDirState          = "states"
 	MerkleTreeStorePath = "merkle_tree.db"
 )
+var LevelDBMock *leveldb.DB
+
+var MOCKDBSTORE = true
 
 //LedgerStoreImp is main store struct fo ledger
 type LedgerStoreImp struct {
@@ -111,6 +119,15 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	}
 	ledgerStore.stateStore = stateStore
 
+	if MOCKDBSTORE {
+		modkDBPath := fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirState+"mockdb")
+		var err error
+		LevelDBMock, err = OpenLevelDB(modkDBPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	eventState, err := NewEventStore(fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirEvent))
 	if err != nil {
 		return nil, fmt.Errorf("NewEventStore error %s", err)
@@ -118,6 +135,29 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	ledgerStore.eventStore = eventState
 
 	return ledgerStore, nil
+}
+
+func OpenLevelDB(file string) (*leveldb.DB, error) {
+	openFileCache := opt.DefaultOpenFilesCacheCapacity
+
+	// default Options
+	o := opt.Options{
+		NoSync:                 false,
+		OpenFilesCacheCapacity: openFileCache,
+		Filter:                 filter.NewBloomFilter(10),
+	}
+
+	db, err := leveldb.OpenFile(file, &o)
+
+	if _, corrupted := err.(*errors2.ErrCorrupted); corrupted {
+		db, err = leveldb.RecoverFile(file, nil)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return db, nil
 }
 
 //InitLedgerStoreWithGenesisBlock init the ledger store with genesis block. It's the first operation after NewLedgerStore.
@@ -614,7 +654,9 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 	}
 	return nil
 }
-
+func (this *LedgerStoreImp) GetStateStore() *StateStore {
+	return this.stateStore
+}
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
 	if block.Header.Height != 0 {
@@ -639,9 +681,13 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	})
 
 	cache := storage.NewCacheDB(overlay)
+	//index := 0
 	for _, tx := range block.Transactions {
 		cache.Reset()
 		notify, e := this.handleTransaction(overlay, cache, gasTable, block, tx)
+		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
+		//neovm.PrintOpcode = false
+		//index++
 		if e != nil {
 			err = e
 			return
@@ -649,9 +695,52 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 		result.Notify = append(result.Notify, notify)
 	}
+	//overlaydb.IS_SHOW = false
 
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
+
+	//hash := result.WriteSet.Hash()
+	//if neovm.PrintOpcode {
+	//	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, hash)
+	//}
+
+	if MOCKDBSTORE {
+		sink := common.NewZeroCopySink(nil)
+		gasMap := make(map[string]uint64)
+		neovm.GAS_TABLE.Range(func(key, value interface{}) bool {
+			val, ok := value.(uint64)
+			if ok {
+				gasMap[key.(string)] = val
+			}
+			return true
+		})
+		//gasTable
+		sink.WriteUint32(uint32(len(gasMap)))
+		for k, v := range gasMap {
+			sink.WriteVarBytes([]byte(k))
+			sink.WriteUint64(v)
+		}
+		//before execute
+		readCache := overlay.GetReadCache()
+		sink.WriteUint32(uint32(readCache.Len()))
+		readCache.ForEach(func(key, val []byte) {
+			sink.WriteVarBytes(key)
+			sink.WriteVarBytes(val)
+		})
+
+		//after execute
+		sink.WriteUint32(uint32(result.WriteSet.Len()))
+		result.WriteSet.ForEach(func(key, val []byte) {
+			sink.WriteVarBytes(key)
+			sink.WriteVarBytes(val)
+		})
+
+		key := make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
+		LevelDBMock.Put(key, sink.Bytes(), nil)
+	}
+
 	if block.Header.Height < this.stateHashCheckHeight {
 		result.MerkleRoot = common.UINT256_EMPTY
 	} else if block.Header.Height == this.stateHashCheckHeight {
@@ -707,6 +796,16 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	for _, notify := range result.Notify {
 		SaveNotify(this.eventStore, notify.TxHash, notify)
 	}
+	//neovm.PrintOpcode = false
+	//err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
+	//
+	//err = this.stateStore.AddBlockMerkleTreeRoot(block.Header.TransactionsRoot)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
 
 	err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
 	if err != nil {
@@ -724,6 +823,12 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	}
 
 	log.Debugf("the state transition hash of block %d is:%s", blockHeight, result.Hash.ToHexString())
+
+	//hash := result.WriteSet.Hash()
+	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
+	//if blockHeight >= 1294202 {
+	//	panic("1294202")
+	//}
 
 	result.WriteSet.ForEach(func(key, val []byte) {
 		if len(val) == 0 {
@@ -817,6 +922,7 @@ func (this *LedgerStoreImp) submitBlock(block *types.Block, result store.Execute
 	if err != nil {
 		return fmt.Errorf("stateStore.CommitTo height:%d error %s", blockHeight, err)
 	}
+
 	this.setCurrentBlock(blockHeight, blockHash)
 
 	if events.DefActorPublisher != nil {
@@ -977,6 +1083,10 @@ func (this *LedgerStoreImp) GetBlockByHash(blockHash common.Uint256) (*types.Blo
 	return this.blockStore.GetBlock(blockHash)
 }
 
+func (this *LedgerStoreImp) GetBlockBytesByHash(blockHash common.Uint256) ([]byte, error) {
+	return this.blockStore.GetBlockBytes(blockHash)
+}
+
 //GetBlockByHeight return block by height.
 func (this *LedgerStoreImp) GetBlockByHeight(height uint32) (*types.Block, error) {
 	blockHash := this.GetBlockHash(height)
@@ -1019,9 +1129,10 @@ func (this *LedgerStoreImp) GetEventNotifyByBlock(height uint32) ([]*event.Execu
 
 //PreExecuteContract return the result of smart contract execution without commit to store
 func (this *LedgerStoreImp) PreExecuteContract(tx *types.Transaction) (*sstate.PreExecResult, error) {
+
 	height := this.GetCurrentBlockHeight()
 	stf := &sstate.PreExecResult{State: event.CONTRACT_STATE_FAIL, Gas: neovm.MIN_TRANSACTION_GAS, Result: nil}
-
+	return stf, errors.NewErr("")
 	config := &smartcontract.Config{
 		Time:      uint32(time.Now().Unix()),
 		Height:    height + 1,

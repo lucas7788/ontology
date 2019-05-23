@@ -38,13 +38,15 @@ type JoinIter struct {
 	nextMemEnd  bool
 	nextBackEnd bool
 	cmp         comparer.BasicComparer
+	readCache   *MemDB
 }
 
-func NewJoinIter(memIter, backendIter common.StoreIterator) *JoinIter {
+func NewJoinIter(memIter, backendIter common.StoreIterator, readCache *MemDB) *JoinIter {
 	return &JoinIter{
-		backend: backendIter,
-		memdb:   memIter,
-		cmp:     comparer.DefaultComparer,
+		backend:   backendIter,
+		memdb:     memIter,
+		cmp:       comparer.DefaultComparer,
+		readCache: readCache,
 	}
 }
 
@@ -76,6 +78,7 @@ func (iter *JoinIter) first() bool {
 		if mem == false {
 			iter.key = bkey
 			iter.value = bval
+			iter.readCache.Put(bkey, bval)
 			iter.keyOrigin = FromBack
 			return true
 		}
@@ -93,6 +96,7 @@ func (iter *JoinIter) first() bool {
 		} else {
 			iter.key = bkey
 			iter.value = bval
+			iter.readCache.Put(bkey, bval)
 			iter.keyOrigin = FromBack
 		}
 		return true
@@ -158,6 +162,7 @@ func (iter *JoinIter) next() bool {
 			iter.key = iter.backend.Key()
 			iter.value = iter.backend.Value()
 			iter.keyOrigin = FromBack
+			iter.readCache.Put(iter.key, iter.value)
 		} else {
 			bkey := iter.backend.Key()
 			mkey := iter.memdb.Key()
@@ -175,6 +180,7 @@ func (iter *JoinIter) next() bool {
 				iter.key = bkey
 				iter.value = iter.backend.Value()
 				iter.keyOrigin = FromBack
+				iter.readCache.Put(iter.key, iter.value)
 			default:
 				panic("unreachable")
 			}

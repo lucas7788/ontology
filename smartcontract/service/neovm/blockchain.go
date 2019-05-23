@@ -27,11 +27,8 @@ import (
 
 // BlockChainGetHeight put blockchain's height to vm stack
 func BlockChainGetHeight(service *NeoVmService, engine *vm.Executor) error {
-	err := engine.EvalStack.PushUint32(service.Store.GetCurrentBlockHeight())
-	if err != nil {
-		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetHeight] GetHeight error!.")
-	}
-	return nil
+	return engine.EvalStack.PushUint32(service.Height-1)
+	
 }
 
 // BlockChainGetHeader put blockchain's header to vm stack

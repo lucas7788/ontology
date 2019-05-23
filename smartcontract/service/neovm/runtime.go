@@ -153,6 +153,84 @@ func RuntimeGetCurrentBlockHash(service *NeoVmService, engine *vm.Executor) erro
 	return engine.EvalStack.PushBytes(service.BlockHash.ToArray())
 }
 
+func Dump(items []vmtypes.StackItems) (string, error) {
+	data := fmt.Sprintf("stack[%d]:\n", len(items))
+	for i, item := range items {
+		i = len(items) - i
+		res := dump_item(item)
+		data += fmt.Sprintf("%d:\t%s\n", i, res)
+	}
+	return data, nil
+}
+
+func dump_item(item vmtypes.StackItems) string {
+	switch item.(type) {
+	case *vmtypes.ByteArray:
+		bs, _ := item.GetByteArray()
+		return fmt.Sprintf("bytes(hex:%x)", bs)
+
+	case *vmtypes.Boolean:
+		bs, _ := item.GetBoolean()
+		v := 0
+		if bs {
+			v = 1
+		}
+		return fmt.Sprintf("int(%d)", v)
+
+	case *vmtypes.Integer:
+		b, _ := item.GetBigInteger()
+		return fmt.Sprintf("int(%d)", b)
+	case *vmtypes.Array:
+		data := ""
+		arr, _ := item.GetArray()
+		for i, v := range arr {
+			data += fmt.Sprintf("%d: %s, ", i, dump_item(v))
+		}
+		return fmt.Sprintf("array[%d]{%s}", len(arr), data)
+	case *vmtypes.Struct:
+		data := ""
+		s, _ := item.GetStruct()
+		for _, v := range s {
+			data += dump_item(v) + ", "
+		}
+		return fmt.Sprintf("struct[%d]{%s}", len(s), data)
+	case *vmtypes.Map:
+
+		mp, _ := item.GetMap()
+		var unsortKey []string
+		keyMap := make(map[string]vmtypes.StackItems, 0)
+		for k := range mp {
+			switch k.(type) {
+			case *vmtypes.ByteArray, *vmtypes.Integer:
+				ba, _ := k.GetByteArray()
+				key := string(ba)
+				if key == "" {
+					//return ,errors.NewErr("Serialize Map error: invalid key type")
+				}
+				unsortKey = append(unsortKey, key)
+				keyMap[key] = k
+
+			default:
+				//return errors.NewErr("Unsupport map key type.")
+			}
+		}
+
+		sort.Strings(unsortKey)
+		data := ""
+		for _, key := range unsortKey {
+			v := keyMap[key]
+			data += fmt.Sprintf("%x: %s,", key, dump_item(v))
+		}
+		return fmt.Sprintf("map[%d]{%s}", len(keyMap), data)
+	case *vmtypes.Interop:
+		v, _ := item.GetInterface()
+		return fmt.Sprintf("interop[%x]", v)
+	default:
+		//return errors.NewErr("unknown type")
+	}
+	return ""
+}
+
 func SerializeStackItem(item vmtypes.StackItems) ([]byte, error) {
 	if CircularRefAndDepthDetection(item) {
 		return nil, errors.NewErr("runtime serialize: can not serialize circular reference data")
