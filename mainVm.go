@@ -23,29 +23,38 @@ import (
 	"strconv"
 )
 
+var Block_Height = uint32(7113)
+
 func main() {
 	dbDir := "./Chain/ontology"
 	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb")
 	store, err := leveldbstore.NewLevelDBStore(modkDBPath)
 	if err != nil {
+		fmt.Println("err:", err)
 		return
 	}
-	ledgerStore, _ := ledgerstore.NewLedgerStore(dbDir, 3000000)
+	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
+	if err != nil {
+		fmt.Println("err:", err)
+		return
+	}
 	bookKeepers, err := config.DefConfig.GetBookkeepers()
 	if err != nil {
+		fmt.Println("err:", err)
 		return
 	}
 	genesisConfig := config.DefConfig.Genesis
 	genesisBlock, err := genesis.BuildGenesisBlock(bookKeepers, genesisConfig)
 	if err != nil {
+		fmt.Println("err:", err)
 		return
 	}
 	ledgerStore.InitLedgerStoreWithGenesisBlock(genesisBlock, bookKeepers)
 
 	mockDBStore := ledgerstore.NewMockDBStore(store)
-	overlay := ledgerstore.NewOverlayDB(100, mockDBStore)
+	overlay := ledgerstore.NewOverlayDB(Block_Height, mockDBStore)
 
-	hash := ledgerStore.GetBlockHash(0)
+	hash := ledgerStore.GetBlockHash(Block_Height)
 	fmt.Println("hash:", hash)
 	block, _ := ledgerStore.GetBlockByHash(hash)
 
@@ -56,8 +65,9 @@ func main() {
 			Tx:     &types.Transaction{},
 		}
 
-		err = refreshGlobalParam(config, storage.NewCacheDB(ledgerstore.NewOverlayDB(100, mockDBStore)), ledgerStore)
+		err = refreshGlobalParam(config, storage.NewCacheDB(ledgerStore.GetStateStore().NewOverlayDB()), ledgerStore)
 		if err != nil {
+			fmt.Println("err:", err)
 			return
 		}
 	}
@@ -68,6 +78,7 @@ func main() {
 		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
 		if e != nil {
 			err = e
+			fmt.Println("err:", err)
 			return
 		}
 	}

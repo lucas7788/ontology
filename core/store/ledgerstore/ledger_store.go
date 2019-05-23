@@ -73,7 +73,7 @@ var (
 )
 var MOCKDBStore *MockDBStore
 
-var MOCKDBSTORE = true
+var MOCKDBSTORE = false
 
 //LedgerStoreImp is main store struct fo ledger
 type LedgerStoreImp struct {
@@ -630,7 +630,9 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 	}
 	return nil
 }
-
+func (this *LedgerStoreImp) GetStateStore() *StateStore {
+	return this.stateStore
+}
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
 
@@ -668,42 +670,35 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	log.Errorf("result.WriteSet: %d\n", result.WriteSet.Len())
 
 	if MOCKDBStore != nil {
-		log.Error("*******************herehere")
 		MOCKDBStore.NewBatch()
 		//before execute
 		readCache := overlay.GetReadCache()
 
 		log.Errorf("***********rc.Len(): %d\n", readCache.Len())
-		tempMap := make(map[string]string)
+		sink := common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(readCache.Len()))
 		readCache.ForEach(func(key, val []byte) {
 			if len(val) != 0 {
-				tempMap[string(key)] = string(val)
+				sink.WriteVarBytes(key)
+				sink.WriteVarBytes(val)
 			}
 		})
-		sink := common.NewZeroCopySink(nil)
-		sink.WriteUint32(uint32(len(tempMap)))
-		for k, v := range tempMap {
-			sink.WriteVarBytes([]byte(k))
-			sink.WriteVarBytes([]byte(v))
-		}
+
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
 		MOCKDBStore.Put(key, sink.Bytes())
 		//log.Errorf("***********MOCKDBStore.Put, height:%d, sink.Bytes len:%d\n", block.Header.Height, len(sink.Bytes()))
 
 		//after execute
-		tempMap = make(map[string]string)
+		sink = common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(result.WriteSet.Len()))
 		result.WriteSet.ForEach(func(key, val []byte) {
 			if len(val) != 0 {
-				tempMap[string(key)] = string(val)
+				sink.WriteVarBytes(key)
+				sink.WriteVarBytes(val)
 			}
 		})
-		sink = common.NewZeroCopySink(nil)
-		sink.WriteUint32(uint32(len(tempMap)))
-		for k, v := range tempMap {
-			sink.WriteVarBytes([]byte(k))
-			sink.WriteVarBytes([]byte(v))
-		}
+
 		key = make([]byte, 5, 5)
 		key[0] = byte(1)
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)

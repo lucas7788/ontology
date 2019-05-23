@@ -21,7 +21,6 @@ package overlaydb
 import (
 	"crypto/sha256"
 	comm "github.com/ontio/ontology/common"
-	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/core/store/common"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -73,7 +72,7 @@ func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
 		return nil, err
 	}
 	self.readCache.Put(key, value)
-	log.Errorf("readCache.Put key: %x, value: %x, readCache: len: %d\n", key, value, self.readCache.Len())
+	//log.Errorf("readCache.Put key: %x, value: %x, readCache: len: %d\n", key, value, self.readCache.Len())
 	return
 }
 func (self *OverlayDB) GetReadCache() *MemDB {
