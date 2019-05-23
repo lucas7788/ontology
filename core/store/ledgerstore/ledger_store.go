@@ -21,7 +21,9 @@ package ledgerstore
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"github.com/ontio/ontology/core/store/leveldbstore"
 	"hash"
 	"math"
 	"os"
@@ -69,6 +71,9 @@ var (
 	DBDirState          = "states"
 	MerkleTreeStorePath = "merkle_tree.db"
 )
+var MOCKDBStore *MockDBStore
+
+var MOCKDBSTORE = true
 
 //LedgerStoreImp is main store struct fo ledger
 type LedgerStoreImp struct {
@@ -111,6 +116,16 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 		return nil, fmt.Errorf("NewStateStore error %s", err)
 	}
 	ledgerStore.stateStore = stateStore
+
+	if MOCKDBSTORE {
+		modkDBPath := fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirState+"mockdb")
+		store, err := leveldbstore.NewLevelDBStore(modkDBPath)
+		log.Error("modkDBPath:", modkDBPath)
+		if err != nil {
+			return nil, err
+		}
+		MOCKDBStore = NewMockDBStore(store)
+	}
 
 	eventState, err := NewEventStore(fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirEvent))
 	if err != nil {
@@ -615,7 +630,9 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 	}
 	return nil
 }
-
+func (this *LedgerStoreImp) GetStateStore() *StateStore {
+	return this.stateStore
+}
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
 	if block.Header.Height != 0 {
@@ -645,6 +662,53 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
+	if result.WriteSet.Len() != 0 {
+		log.Errorf("*******result.WriteSet: %d, height: %d\n", result.WriteSet.Len(), block.Header.Height)
+	}
+
+	hash := result.WriteSet.Hash()
+	if neovm.PrintOpcode {
+		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, hash)
+	}
+
+
+	if MOCKDBStore != nil {
+		MOCKDBStore.NewBatch()
+		//before execute
+		readCache := overlay.GetReadCache()
+		if readCache.Len() != 0 {
+			log.Errorf("***********rc.Len(): %d\n", readCache.Len())
+		}
+		sink := common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(readCache.Len()))
+		readCache.ForEach(func(key, val []byte) {
+			if len(val) != 0 {
+				sink.WriteVarBytes(key)
+				sink.WriteVarBytes(val)
+			}
+		})
+
+		key := make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
+		MOCKDBStore.Put(key, sink.Bytes())
+		//log.Errorf("***********MOCKDBStore.Put, height:%d, sink.Bytes len:%d\n", block.Header.Height, len(sink.Bytes()))
+
+		//after execute
+		sink = common.NewZeroCopySink(nil)
+		sink.WriteUint32(uint32(result.WriteSet.Len()))
+		result.WriteSet.ForEach(func(key, val []byte) {
+			if len(val) != 0 {
+				sink.WriteVarBytes(key)
+				sink.WriteVarBytes(val)
+			}
+		})
+
+		key = make([]byte, 5, 5)
+		key[0] = byte(1)
+		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)
+		MOCKDBStore.BatchPut(key, sink.Bytes())
+	}
+
 	if block.Header.Height < this.stateHashCheckHeight {
 		result.MerkleRoot = common.UINT256_EMPTY
 	} else if block.Header.Height == this.stateHashCheckHeight {
@@ -700,6 +764,16 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	for _, notify := range result.Notify {
 		SaveNotify(this.eventStore, notify.TxHash, notify)
 	}
+	neovm.PrintOpcode = false
+	//err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
+	//
+	//err = this.stateStore.AddBlockMerkleTreeRoot(block.Header.TransactionsRoot)
+	//if err != nil {
+	//	return fmt.Errorf("AddBlockMerkleTreeRoot error %s", err)
+	//}
 
 	err := this.stateStore.AddStateMerkleTreeRoot(blockHeight, result.Hash)
 	if err != nil {
@@ -718,6 +792,14 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 
 	log.Debugf("the state transition hash of block %d is:%s", blockHeight, result.Hash.ToHexString())
 
+	hash := result.WriteSet.Hash()
+	if neovm.PrintOpcode {
+		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
+	}
+
+	if blockHeight >= 2981152 {
+		panic("2981152")
+	}
 	result.WriteSet.ForEach(func(key, val []byte) {
 		if len(val) == 0 {
 			this.stateStore.BatchDeleteRawKey(key)
@@ -810,6 +892,15 @@ func (this *LedgerStoreImp) submitBlock(block *types.Block, result store.Execute
 	if err != nil {
 		return fmt.Errorf("stateStore.CommitTo height:%d error %s", blockHeight, err)
 	}
+
+	if MOCKDBStore != nil {
+		err = MOCKDBStore.BatchCommit()
+		//log.Errorf("***********MOCKDBStore.BatchCommit(), height:%d\n", block.Header.Height)
+		if err != nil {
+			return fmt.Errorf("mockDBStore.BatchCommit height:%d error %s", blockHeight, err)
+		}
+	}
+
 	this.setCurrentBlock(blockHeight, blockHash)
 
 	if events.DefActorPublisher != nil {
