@@ -1,28 +1,36 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/ontio/ontology/common/config"
+	"github.com/ontio/ontology/common/log"
+	"github.com/ontio/ontology/common/serialization"
 	"github.com/ontio/ontology/core/genesis"
-	"github.com/ontio/ontology/core/ledger"
+	"github.com/ontio/ontology/core/store"
+	"github.com/ontio/ontology/core/store/ledgerstore"
+	"github.com/ontio/ontology/core/store/leveldbstore"
+	"github.com/ontio/ontology/core/store/overlaydb"
+	"github.com/ontio/ontology/core/types"
+	"github.com/ontio/ontology/smartcontract"
+	"github.com/ontio/ontology/smartcontract/event"
+	"github.com/ontio/ontology/smartcontract/service/native/global_params"
+	"github.com/ontio/ontology/smartcontract/service/native/utils"
+	"github.com/ontio/ontology/smartcontract/service/neovm"
+	"github.com/ontio/ontology/smartcontract/storage"
+	"math"
+	"os"
+	"strconv"
 )
 
 func main() {
-	initLedger()
-
-	hash := ledger.DefLedger.GetBlockHash(0)
-	fmt.Println("hash:", hash)
-	block, _ := ledger.DefLedger.GetBlockByHash(hash)
-	ledger.DefLedger.ExecuteBlock(block)
-}
-func initLedger() {
-	var err error
 	dbDir := "./Chain/ontology"
-	ledger.DefLedger, err = ledger.NewLedger(dbDir, 3000000)
+	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb")
+	store, err := leveldbstore.NewLevelDBStore(modkDBPath)
 	if err != nil {
 		return
 	}
-
+	ledgerStore, _ := ledgerstore.NewLedgerStore(dbDir, 3000000)
 	bookKeepers, err := config.DefConfig.GetBookkeepers()
 	if err != nil {
 		return
@@ -32,8 +40,104 @@ func initLedger() {
 	if err != nil {
 		return
 	}
-	err = ledger.DefLedger.Init(bookKeepers, genesisBlock)
-	if err != nil {
-		return
+	ledgerStore.InitLedgerStoreWithGenesisBlock(genesisBlock, bookKeepers)
+
+	mockDBStore := ledgerstore.NewMockDBStore(store)
+	overlay := ledgerstore.NewOverlayDB(100, mockDBStore)
+
+	hash := ledgerStore.GetBlockHash(0)
+	fmt.Println("hash:", hash)
+	block, _ := ledgerStore.GetBlockByHash(hash)
+
+	if block.Header.Height != 0 {
+		config := &smartcontract.Config{
+			Time:   block.Header.Timestamp,
+			Height: block.Header.Height,
+			Tx:     &types.Transaction{},
+		}
+
+		err = refreshGlobalParam(config, storage.NewCacheDB(ledgerstore.NewOverlayDB(100, mockDBStore)), ledgerStore)
+		if err != nil {
+			return
+		}
 	}
+
+	cache := storage.NewCacheDB(overlay)
+	for _, tx := range block.Transactions {
+		cache.Reset()
+		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
+		if e != nil {
+			err = e
+			return
+		}
+	}
+}
+
+func handleTransaction(ledgerStore *ledgerstore.LedgerStoreImp, overlay *overlaydb.OverlayDB, cache *storage.CacheDB, block *types.Block, tx *types.Transaction) (*event.ExecuteNotify, error) {
+	txHash := tx.Hash()
+	notify := &event.ExecuteNotify{TxHash: txHash, State: event.CONTRACT_STATE_FAIL}
+	stateStore := ledgerstore.StateStore{}
+	switch tx.TxType {
+	case types.Deploy:
+		err := stateStore.HandleDeployTransaction(ledgerStore, overlay, cache, tx, block, notify)
+		if overlay.Error() != nil {
+			return nil, fmt.Errorf("HandleDeployTransaction tx %s error %s", txHash.ToHexString(), overlay.Error())
+		}
+		if err != nil {
+			log.Debugf("HandleDeployTransaction tx %s error %s", txHash.ToHexString(), err)
+		}
+	case types.Invoke:
+		err := stateStore.HandleInvokeTransaction(ledgerStore, overlay, cache, tx, block, notify)
+		if overlay.Error() != nil {
+			return nil, fmt.Errorf("HandleInvokeTransaction tx %s error %s", txHash.ToHexString(), overlay.Error())
+		}
+		if err != nil {
+			log.Debugf("HandleInvokeTransaction tx %s error %s", txHash.ToHexString(), err)
+		}
+	}
+
+	return notify, nil
+}
+
+func refreshGlobalParam(config *smartcontract.Config, cache *storage.CacheDB, store store.LedgerStore) error {
+	bf := new(bytes.Buffer)
+	if err := utils.WriteVarUint(bf, uint64(len(neovm.GAS_TABLE_KEYS))); err != nil {
+		return fmt.Errorf("write gas_table_keys length error:%s", err)
+	}
+	for _, value := range neovm.GAS_TABLE_KEYS {
+		if err := serialization.WriteString(bf, value); err != nil {
+			return fmt.Errorf("serialize param name error:%s", value)
+		}
+	}
+
+	sc := smartcontract.SmartContract{
+		Config:  config,
+		CacheDB: cache,
+		Store:   store,
+		Gas:     math.MaxUint64,
+	}
+
+	service, _ := sc.NewNativeService()
+	result, err := service.NativeCall(utils.ParamContractAddress, "getGlobalParam", bf.Bytes())
+	if err != nil {
+		return err
+	}
+	params := new(global_params.Params)
+	if err := params.Deserialize(bytes.NewBuffer(result.([]byte))); err != nil {
+		return fmt.Errorf("deserialize global params error:%s", err)
+	}
+	neovm.GAS_TABLE.Range(func(key, value interface{}) bool {
+		n, ps := params.GetParam(key.(string))
+		if n != -1 && ps.Value != "" {
+			pu, err := strconv.ParseUint(ps.Value, 10, 64)
+			if err != nil {
+				log.Errorf("[refreshGlobalParam] failed to parse uint %v\n", ps.Value)
+			} else {
+				neovm.GAS_TABLE.Store(key, pu)
+
+			}
+		}
+		return true
+	})
+	return nil
 }

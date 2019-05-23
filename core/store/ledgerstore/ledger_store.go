@@ -71,6 +71,9 @@ var (
 	DBDirState          = "states"
 	MerkleTreeStorePath = "merkle_tree.db"
 )
+var MOCKDBStore *MockDBStore
+
+var MOCKDBSTORE = true
 
 //LedgerStoreImp is main store struct fo ledger
 type LedgerStoreImp struct {
@@ -87,7 +90,6 @@ type LedgerStoreImp struct {
 	vbftPeerInfoblock    map[string]uint32 //pubInfo save pubkey,peerindex
 	lock                 sync.RWMutex
 	stateHashCheckHeight uint32
-	mockDBStore          *MockDBStore
 }
 
 //NewLedgerStore return LedgerStoreImp instance
@@ -115,12 +117,16 @@ func NewLedgerStore(dataDir string, stateHashHeight uint32) (*LedgerStoreImp, er
 	}
 	ledgerStore.stateStore = stateStore
 
-	modkDBPath := fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirState+"mockdb")
-	store, err := leveldbstore.NewLevelDBStore(modkDBPath)
-	if err != nil {
-		return nil, err
+	if MOCKDBSTORE {
+		modkDBPath := fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirState+"mockdb")
+		store, err := leveldbstore.NewLevelDBStore(modkDBPath)
+		log.Error("modkDBPath:", modkDBPath)
+		if err != nil {
+			return nil, err
+		}
+		MOCKDBStore = NewMockDBStore(store)
 	}
-	ledgerStore.mockDBStore = NewMockDBStore(store)
+
 	eventState, err := NewEventStore(fmt.Sprintf("%s%s%s", dataDir, string(os.PathSeparator), DBDirEvent))
 	if err != nil {
 		return nil, fmt.Errorf("NewEventStore error %s", err)
@@ -627,9 +633,10 @@ func (this *LedgerStoreImp) saveBlockToBlockStore(block *types.Block) error {
 
 func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.ExecuteResult, err error) {
 	overlay := this.stateStore.NewOverlayDB()
-	if block.Header.Height == 0 && false {
-		overlay = NewOverlayDB(block.Header.Height, this.mockDBStore)
-	}
+
+	//if block.Header.Height == 0 && false {
+	//	overlay = NewOverlayDB(block.Header.Height, MOCKDBStore)
+	//}
 
 	if block.Header.Height != 0 {
 		config := &smartcontract.Config{
@@ -658,13 +665,17 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
+	log.Errorf("result.WriteSet: %d\n", result.WriteSet.Len())
 
-	if true {
-		this.mockDBStore.NewBatch()
+	if MOCKDBStore != nil {
+		log.Error("*******************herehere")
+		MOCKDBStore.NewBatch()
 		//before execute
-		rc := overlay.GetReadCache()
+		readCache := overlay.GetReadCache()
+
+		log.Errorf("***********rc.Len(): %d\n", readCache.Len())
 		tempMap := make(map[string]string)
-		rc.ForEach(func(key, val []byte) {
+		readCache.ForEach(func(key, val []byte) {
 			if len(val) != 0 {
 				tempMap[string(key)] = string(val)
 			}
@@ -677,7 +688,8 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		}
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
-		this.mockDBStore.BatchPut(key, sink.Bytes())
+		MOCKDBStore.Put(key, sink.Bytes())
+		//log.Errorf("***********MOCKDBStore.Put, height:%d, sink.Bytes len:%d\n", block.Header.Height, len(sink.Bytes()))
 
 		//after execute
 		tempMap = make(map[string]string)
@@ -695,7 +707,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		key = make([]byte, 5, 5)
 		key[0] = byte(1)
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)
-		this.mockDBStore.BatchPut(key, sink.Bytes())
+		MOCKDBStore.BatchPut(key, sink.Bytes())
 	}
 
 	if block.Header.Height < this.stateHashCheckHeight {
@@ -871,10 +883,15 @@ func (this *LedgerStoreImp) submitBlock(block *types.Block, result store.Execute
 	if err != nil {
 		return fmt.Errorf("stateStore.CommitTo height:%d error %s", blockHeight, err)
 	}
-	err = this.mockDBStore.BatchCommit()
-	if err != nil {
-		return fmt.Errorf("mockDBStore.BatchCommit height:%d error %s", blockHeight, err)
+
+	if MOCKDBStore != nil {
+		err = MOCKDBStore.BatchCommit()
+		log.Errorf("***********MOCKDBStore.BatchCommit(), height:%d\n", block.Header.Height)
+		if err != nil {
+			return fmt.Errorf("mockDBStore.BatchCommit height:%d error %s", blockHeight, err)
+		}
 	}
+
 	this.setCurrentBlock(blockHeight, blockHash)
 
 	if events.DefActorPublisher != nil {
