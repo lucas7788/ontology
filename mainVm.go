@@ -23,7 +23,7 @@ import (
 	"strconv"
 )
 
-var Block_Height = uint32(505)
+var Block_Height = uint32(3898)
 
 func main() {
 	ledgerstore.MOCKDBSTORE = false
@@ -77,7 +77,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
 
 	memdbAfterExecute := ledgerstore.NewOverlayDBAfterExecutor(Block_Height, mockDBStore)
-	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, memdbAfterExecute.Hash())
+	fmt.Fprintf(os.Stderr, "AfterExecutor diff hash at height:%d, hash:%x\n", block.Header.Height, memdbAfterExecute.Hash())
 
 }
 
