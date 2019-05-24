@@ -57,6 +57,8 @@ func (bd *RawHeader) GetTrustedHeader() *RawTrustedHeader {
 		Payload: sink.Bytes(),
 	}
 }
+// note: can only be called when source is trusted, like data from local ledger store
+
 
 func (bd *RawHeader) Serialization(sink *common.ZeroCopySink) error {
 	_, err := bd.SerializeExt(sink)
