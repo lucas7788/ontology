@@ -707,10 +707,10 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		binary.LittleEndian.PutUint32(key[1:], block.Header.Height)
 		MOCKDBStore.BatchPut(key, sink.Bytes())
 
-		//if block.Header.Height == 505 {
-		//	log.Errorf("before: %x, blockHeight: %d\n", readCache.Hash(), block.Header.Height)
-		//	log.Errorf("after: %x, blockHeight: %d\n", result.WriteSet.Hash(), block.Header.Height)
-		//}
+		if block.Header.Height == 3898 {
+			log.Errorf("before: %x, blockHeight: %d\n", readCache.Hash(), block.Header.Height)
+			log.Errorf("after: %x, blockHeight: %d\n", result.WriteSet.Hash(), block.Header.Height)
+		}
 	}
 
 	if block.Header.Height < this.stateHashCheckHeight {
