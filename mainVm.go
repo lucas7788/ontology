@@ -44,7 +44,6 @@ func main() {
 	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
 	initLedgerStore(ledgerStore)
 
-	fmt.Println("Current BlockHeight: %d", ledgerStore.GetCurrentBlockHeight())
 	start := time.Now()
 
 	ch := make(chan interface{}, 10)
@@ -58,27 +57,31 @@ func main() {
 			ch <- executeInfo
 		}
 		ch <- "finish"
+		close(ch)
 	}()
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			for {
 				select {
-				case task := <-ch:
+				case task, ok := <-ch:
+					if !ok {
+						return
+					}
 					executeInfo, ok := task.(*ExecuteInfo)
 					if ok {
 						execute(executeInfo, ledgerStore)
 					} else {
 						//finish
-						wg.Done()
 						return
 					}
-
 				}
 			}
 		}()
 	}
 	wg.Wait()
+	fmt.Println("Current BlockHeight: %d", ledgerStore.GetCurrentBlockHeight())
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
 }

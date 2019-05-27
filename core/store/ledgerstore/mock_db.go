@@ -112,4 +112,3 @@ func (self *MockDB) BatchCommit() error {
 func (self *MockDB) Close() error {
 	return nil
 }
-
