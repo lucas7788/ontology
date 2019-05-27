@@ -327,7 +327,6 @@ func refreshGlobalParam(config *smartcontract.Config, cache *storage.CacheDB, st
 				log.Errorf("[refreshGlobalParam] failed to parse uint %v\n", ps.Value)
 			} else {
 				neovm.GAS_TABLE.Store(key, pu)
-
 			}
 		}
 		return true
