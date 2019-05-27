@@ -2,64 +2,72 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
+	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/common/log"
-	"github.com/ontio/ontology/common/serialization"
 	"github.com/ontio/ontology/core/genesis"
-	"github.com/ontio/ontology/core/store"
 	"github.com/ontio/ontology/core/store/ledgerstore"
-	"github.com/ontio/ontology/core/store/leveldbstore"
 	"github.com/ontio/ontology/core/store/overlaydb"
 	"github.com/ontio/ontology/core/types"
-	"github.com/ontio/ontology/smartcontract"
 	"github.com/ontio/ontology/smartcontract/event"
-	"github.com/ontio/ontology/smartcontract/service/native/global_params"
-	"github.com/ontio/ontology/smartcontract/service/native/utils"
 	"github.com/ontio/ontology/smartcontract/service/neovm"
 	"github.com/ontio/ontology/smartcontract/storage"
-	"math"
+	"github.com/syndtr/goleveldb/leveldb"
 	"os"
-	"strconv"
 )
 
-var Block_Height = uint32(512)
+type ExecuteInfo struct {
+	Height   uint32
+	ReadSet  *overlaydb.MemDB
+	WriteSet *overlaydb.MemDB
+	GasTable map[string]uint64
+}
 
 func main() {
 	ledgerstore.MOCKDBSTORE = false
 
 	dbDir := "./Chain/ontology"
+
 	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb")
-	store, err := leveldbstore.NewLevelDBStore(modkDBPath)
+	levelDB, err := ledgerstore.OpenLevelDB(modkDBPath)
 	if err != nil {
-		fmt.Println("err:", err)
+		fmt.Println("err: ", err)
 		return
 	}
+
 	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
-	if err != nil {
-		fmt.Println("err:", err)
-		return
-	}
 	initLedgerStore(ledgerStore)
 
-	mockDBStore := ledgerstore.NewMockDBStore(store)
-	overlay := ledgerstore.NewOverlayDB(Block_Height, mockDBStore)
+	ch := make(chan *ExecuteInfo, 10)
+	go func() {
+		for i := uint32(0); i < ledgerStore.GetCurrentBlockHeight(); i++ {
+			executeInfo, err := getExecuteInfoByHeight(i, levelDB)
+			if err != nil {
+				fmt.Println("err:", err)
+				return
+			}
+			ch <- executeInfo
+		}
+	}()
 
-	hash := ledgerStore.GetBlockHash(Block_Height)
+	for {
+		select {
+		case executeInfo := <-ch:
+			execute(executeInfo, ledgerStore)
+		}
+	}
+}
+
+func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
+
+	overlay := overlaydb.NewOverlayDBWithMemdb(executeInfo.ReadSet)
+	hash := ledgerStore.GetBlockHash(executeInfo.Height)
 	block, _ := ledgerStore.GetBlockByHash(hash)
 
 	if block.Header.Height != 0 {
-		config := &smartcontract.Config{
-			Time:   block.Header.Timestamp,
-			Height: block.Header.Height,
-			Tx:     &types.Transaction{},
-		}
-
-		err = refreshGlobalParam(config, storage.NewCacheDB(ledgerStore.GetStateStore().NewOverlayDB()), ledgerStore)
-		if err != nil {
-			fmt.Println("err:", err)
-			return
-		}
+		refreshGlobalParam(executeInfo.GasTable)
 	}
 
 	cache := storage.NewCacheDB(overlay)
@@ -67,18 +75,83 @@ func main() {
 		cache.Reset()
 		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
 		if e != nil {
-			err = e
-			fmt.Println("err:", err)
+			fmt.Println("err:", e)
 			return
 		}
 	}
 
 	writeSet := overlay.GetWriteSet()
-	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
+	if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
+		fmt.Printf("blockheight:%d, writeSet.Hash():%x, executeInfo.WriteSet.Hash():%x", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
+		panic("")
+	}
 
-	memdbAfterExecute := ledgerstore.NewOverlayDBAfterExecutor(Block_Height, mockDBStore)
-	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, memdbAfterExecute.Hash())
+	fmt.Println("blockHeight: ", executeInfo.Height)
 
+	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
+	//
+	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, executeInfo.WriteSet.Hash())
+}
+
+func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB) (*ExecuteInfo, error) {
+	//get gasTable
+	key := make([]byte, 4, 4)
+	binary.LittleEndian.PutUint32(key[:], height)
+	dataBytes, err := levelDB.Get(key, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get databytes error: %s", err)
+	}
+	source := common.NewZeroCopySource(dataBytes)
+	l, eof := source.NextUint32()
+	if eof {
+		return nil, fmt.Errorf("gastable length is wrong: %d", l)
+	}
+
+	m := make(map[string]uint64)
+	for i := uint32(0); i < l; i++ {
+		key, _, _, _ := source.NextVarBytes()
+		val, eof := source.NextUint64()
+		if eof {
+			return nil, fmt.Errorf("update gastable NextUint64 error")
+		}
+		m[string(key)] = val
+	}
+	//get readSet
+	l, eof = source.NextUint32()
+	if eof {
+		return nil, fmt.Errorf("readset NextUint32 error: %d", l)
+	}
+	readSetDB := overlaydb.NewMemDB(16*1024, 16)
+	for i := uint32(0); i < l; i++ {
+		key, _, irregular, eof := source.NextVarBytes()
+		if eof || irregular {
+			break
+		}
+		value, _, _, eof := source.NextVarBytes()
+		if eof {
+			break
+		}
+		readSetDB.Put(key, value)
+	}
+
+	// get writeSet
+	l, eof = source.NextUint32()
+	if eof {
+		return nil, fmt.Errorf("writeset NextUint32 error: %d", l)
+	}
+	writeSetDB := overlaydb.NewMemDB(16*1024, 16)
+	for i := uint32(0); i < l; i++ {
+		key, _, irregular, eof := source.NextVarBytes()
+		if eof || irregular {
+			break
+		}
+		value, _, _, eof := source.NextVarBytes()
+		if eof {
+			break
+		}
+		writeSetDB.Put(key, value)
+	}
+	return &ExecuteInfo{Height: height, ReadSet: readSetDB, WriteSet: writeSetDB, GasTable: m}, nil
 }
 
 func initLedgerStore(ledgerStore *ledgerstore.LedgerStoreImp) {
@@ -122,45 +195,8 @@ func handleTransaction(ledgerStore *ledgerstore.LedgerStoreImp, overlay *overlay
 	return notify, nil
 }
 
-func refreshGlobalParam(config *smartcontract.Config, cache *storage.CacheDB, store store.LedgerStore) error {
-	bf := new(bytes.Buffer)
-	if err := utils.WriteVarUint(bf, uint64(len(neovm.GAS_TABLE_KEYS))); err != nil {
-		return fmt.Errorf("write gas_table_keys length error:%s", err)
+func refreshGlobalParam(gasTable map[string]uint64) {
+	for k, v := range gasTable {
+		neovm.GAS_TABLE.Store(k, v)
 	}
-	for _, value := range neovm.GAS_TABLE_KEYS {
-		if err := serialization.WriteString(bf, value); err != nil {
-			return fmt.Errorf("serialize param name error:%s", value)
-		}
-	}
-
-	sc := smartcontract.SmartContract{
-		Config:  config,
-		CacheDB: cache,
-		Store:   store,
-		Gas:     math.MaxUint64,
-	}
-
-	service, _ := sc.NewNativeService()
-	result, err := service.NativeCall(utils.ParamContractAddress, "getGlobalParam", bf.Bytes())
-	if err != nil {
-		return err
-	}
-	params := new(global_params.Params)
-	if err := params.Deserialize(bytes.NewBuffer(result.([]byte))); err != nil {
-		return fmt.Errorf("deserialize global params error:%s", err)
-	}
-	neovm.GAS_TABLE.Range(func(key, value interface{}) bool {
-		n, ps := params.GetParam(key.(string))
-		if n != -1 && ps.Value != "" {
-			pu, err := strconv.ParseUint(ps.Value, 10, 64)
-			if err != nil {
-				log.Errorf("[refreshGlobalParam] failed to parse uint %v\n", ps.Value)
-			} else {
-				neovm.GAS_TABLE.Store(key, pu)
-
-			}
-		}
-		return true
-	})
-	return nil
 }
