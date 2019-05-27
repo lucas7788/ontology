@@ -16,6 +16,8 @@ import (
 	"github.com/ontio/ontology/smartcontract/storage"
 	"github.com/syndtr/goleveldb/leveldb"
 	"os"
+	"sync"
+	"time"
 )
 
 type ExecuteInfo struct {
@@ -26,6 +28,8 @@ type ExecuteInfo struct {
 }
 
 func main() {
+	var wg sync.WaitGroup
+
 	ledgerstore.MOCKDBSTORE = false
 
 	dbDir := "./Chain/ontology"
@@ -40,7 +44,10 @@ func main() {
 	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
 	initLedgerStore(ledgerStore)
 
-	ch := make(chan *ExecuteInfo, 10)
+	fmt.Println("Current BlockHeight: %d", ledgerStore.GetCurrentBlockHeight())
+	start := time.Now()
+
+	ch := make(chan interface{}, 10)
 	go func() {
 		for i := uint32(0); i < ledgerStore.GetCurrentBlockHeight(); i++ {
 			executeInfo, err := getExecuteInfoByHeight(i, levelDB)
@@ -50,26 +57,42 @@ func main() {
 			}
 			ch <- executeInfo
 		}
+		ch <- "finish"
 	}()
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			for {
+				select {
+				case task := <-ch:
+					executeInfo, ok := task.(*ExecuteInfo)
+					if ok {
+						execute(executeInfo, ledgerStore)
+					} else {
+						//finish
+						wg.Done()
+						return
+					}
 
-	for {
-		select {
-		case executeInfo := <-ch:
-			execute(executeInfo, ledgerStore)
-		}
+				}
+			}
+		}()
 	}
+	wg.Wait()
+	fmt.Println("start: ", start)
+	fmt.Println("end: ", time.Now())
 }
 
 func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
 
-	overlay := overlaydb.NewOverlayDBWithMemdb(executeInfo.ReadSet)
+	overlay := overlaydb.NewOverlayDB(ledgerstore.NewMockDBWithMemDB(executeInfo.ReadSet))
 	hash := ledgerStore.GetBlockHash(executeInfo.Height)
-	block, _ := ledgerStore.GetBlockByHash(hash)
-
-	if block.Header.Height != 0 {
-		refreshGlobalParam(executeInfo.GasTable)
+	block, err := ledgerStore.GetBlockByHash(hash)
+	if err != nil {
+		fmt.Println("err:", err)
+		return
 	}
-
+	refreshGlobalParam(executeInfo.GasTable)
 	cache := storage.NewCacheDB(overlay)
 	for _, tx := range block.Transactions {
 		cache.Reset()
@@ -81,8 +104,9 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 	}
 
 	writeSet := overlay.GetWriteSet()
+
 	if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
-		fmt.Printf("blockheight:%d, writeSet.Hash():%x, executeInfo.WriteSet.Hash():%x", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
+		fmt.Printf("blockheight:%d, writeSet.Hash:%x, executeInfo.WriteSet.Hash:%x\n", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
 		panic("")
 	}
 
@@ -109,7 +133,10 @@ func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB) (*ExecuteInfo, e
 
 	m := make(map[string]uint64)
 	for i := uint32(0); i < l; i++ {
-		key, _, _, _ := source.NextVarBytes()
+		key, _, irregular, eof := source.NextVarBytes()
+		if irregular || eof {
+			return nil, fmt.Errorf("update gastable NextVarBytes error")
+		}
 		val, eof := source.NextUint64()
 		if eof {
 			return nil, fmt.Errorf("update gastable NextUint64 error")
@@ -148,6 +175,9 @@ func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB) (*ExecuteInfo, e
 		value, _, _, eof := source.NextVarBytes()
 		if eof {
 			break
+		}
+		if height == 54 {
+			log.Errorf("key:%x, value:%x", key, value)
 		}
 		writeSetDB.Put(key, value)
 	}
