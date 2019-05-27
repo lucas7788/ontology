@@ -44,6 +44,14 @@ func NewOverlayDB(store common.PersistStore) *OverlayDB {
 	}
 }
 
+func NewOverlayDBWithMemdb(memdb *MemDB) *OverlayDB {
+	return &OverlayDB{
+		store:     nil,
+		memdb:     memdb,
+		readCache: nil,
+	}
+}
+
 func (self *OverlayDB) Reset() {
 	self.memdb.Reset()
 }
