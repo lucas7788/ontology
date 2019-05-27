@@ -703,38 +703,32 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 			}
 			return true
 		})
-
+		//gasTable
 		sink.WriteUint32(uint32(len(gasMap)))
-        for k,v := range gasMap {
-        	sink.WriteVarBytes([]byte(k))
-        	sink.WriteUint64(v)
+		for k, v := range gasMap {
+			sink.WriteVarBytes([]byte(k))
+			sink.WriteUint64(v)
 		}
 		//before execute
 		readCache := overlay.GetReadCache()
 		sink.WriteUint32(uint32(readCache.Len()))
 		readCache.ForEach(func(key, val []byte) {
-			if len(val) != 0 {
-				sink.WriteVarBytes(key)
-				sink.WriteVarBytes(val)
-			}
+			sink.WriteVarBytes(key)
+			sink.WriteVarBytes(val)
 		})
-
-		//log.Errorf("***********MOCKDBStore.Put, height:%d, sink.Bytes len:%d\n", block.Header.Height, len(sink.Bytes()))
 
 		//after execute
 		sink.WriteUint32(uint32(result.WriteSet.Len()))
 		result.WriteSet.ForEach(func(key, val []byte) {
-			if len(val) != 0 {
-				sink.WriteVarBytes(key)
-				sink.WriteVarBytes(val)
-			}
+			sink.WriteVarBytes(key)
+			sink.WriteVarBytes(val)
 		})
 
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
 		LevelDBMock.Put(key, sink.Bytes(), nil)
 
-		if block.Header.Height == 3898 {
+		if block.Header.Height == 54 {
 			log.Errorf("before: %x, blockHeight: %d\n", readCache.Hash(), block.Header.Height)
 			log.Errorf("after: %x, blockHeight: %d\n", result.WriteSet.Hash(), block.Header.Height)
 		}
