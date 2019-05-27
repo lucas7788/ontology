@@ -1,8 +1,6 @@
 package ledgerstore
 
 import (
-	"encoding/binary"
-	common2 "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/store/common"
 	"github.com/ontio/ontology/core/store/leveldbstore"
 	"github.com/ontio/ontology/core/store/overlaydb"
@@ -65,6 +63,10 @@ func NewMockDB() *MockDB {
 	return &MockDB{db: overlaydb.NewMemDB(16*1024, 16)}
 }
 
+func NewMockDBWithMemDB(memDB *overlaydb.MemDB) *MockDB {
+	return &MockDB{db: memDB}
+}
+
 func (self *MockDB) NewIterator(prefix []byte) common.StoreIterator {
 	prefixRange := util.BytesPrefix(prefix)
 	return self.db.NewIterator(prefixRange)
@@ -111,59 +113,3 @@ func (self *MockDB) Close() error {
 	return nil
 }
 
-func NewOverlayDB(height uint32, store *MockDBStore) *overlaydb.OverlayDB {
-	//get before execute data
-	key := make([]byte, 4, 4)
-	binary.LittleEndian.PutUint32(key[:], uint32(height))
-	dataBytes, err := store.Get(key)
-	if err != nil {
-		return nil
-	}
-	source := common2.NewZeroCopySource(dataBytes)
-	mockDB := NewMockDB()
-	l, eof := source.NextUint32()
-	if eof {
-		return nil
-	}
-	for i := uint32(0); i < l; i++ {
-		key, _, irregular, eof := source.NextVarBytes()
-		if eof || irregular {
-			break
-		}
-		value, _, _, eof := source.NextVarBytes()
-		if eof {
-			break
-		}
-		mockDB.db.Put(key, value)
-	}
-	return overlaydb.NewOverlayDB(mockDB)
-}
-
-func NewOverlayDBAfterExecutor(height uint32, store *MockDBStore) *overlaydb.MemDB {
-	//get after execute data
-	key := make([]byte, 5, 5)
-	key[0] = byte(1)
-	binary.LittleEndian.PutUint32(key[1:], uint32(height))
-	dataBytes, err := store.Get(key)
-	if err != nil {
-		return nil
-	}
-	source := common2.NewZeroCopySource(dataBytes)
-	mockDB := NewMockDB()
-	l, eof := source.NextUint32()
-	if eof {
-		return nil
-	}
-	for i := uint32(0); i < l; i++ {
-		key, _, irregular, eof := source.NextVarBytes()
-		if eof || irregular {
-			break
-		}
-		value, _, _, eof := source.NextVarBytes()
-		if eof {
-			break
-		}
-		mockDB.db.Put(key, value)
-	}
-	return mockDB.db
-}
