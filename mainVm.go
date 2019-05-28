@@ -28,7 +28,7 @@ type ExecuteInfo struct {
 }
 
 func main() {
-	var wg sync.WaitGroup
+	var wg = new(sync.WaitGroup)
 
 	ledgerstore.MOCKDBSTORE = false
 
@@ -46,44 +46,54 @@ func main() {
 
 	start := time.Now()
 
-	ch := make(chan interface{}, 10)
-	go func() {
-		for i := uint32(0); i < ledgerStore.GetCurrentBlockHeight(); i++ {
-			executeInfo, err := getExecuteInfoByHeight(i, levelDB)
-			if err != nil {
-				fmt.Println("err:", err)
-				return
-			}
-			ch <- executeInfo
-		}
-		ch <- "finish"
-		close(ch)
-	}()
-	for i := 0; i < 10; i++ {
+	ch := make(chan interface{}, 100)
+	currentBlockHeight := ledgerStore.GetCurrentBlockHeight()
+
+	for i := uint32(0); i < 4; i++ {
 		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case task, ok := <-ch:
-					if !ok {
-						return
-					}
-					executeInfo, ok := task.(*ExecuteInfo)
-					if ok {
-						execute(executeInfo, ledgerStore)
-					} else {
-						//finish
-						return
-					}
-				}
-			}
-		}()
+		go sendExecuteInfoToCh(ch, i, currentBlockHeight, levelDB, wg)
 	}
+
+	for i := 0; i < 4; i++ {
+		go handleExecuteInfo(ch, ledgerStore, wg)
+	}
+
 	wg.Wait()
 	fmt.Println("Current BlockHeight: %d", ledgerStore.GetCurrentBlockHeight())
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
+}
+
+func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
+	wg.Add(1)
+	for {
+		select {
+		case task, ok := <-ch:
+			if !ok {
+				wg.Done()
+				return
+			}
+			executeInfo, ok := task.(*ExecuteInfo)
+			if ok {
+				execute(executeInfo, ledgerStore)
+			} else {
+				wg.Done()
+			}
+		}
+	}
+}
+
+func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup) {
+	for i := uint32(0); 4*i+offset < currentBlockHeight; i++ {
+		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB)
+		if err != nil {
+			fmt.Println("err:", err)
+			return
+		}
+		ch <- executeInfo
+	}
+	ch <- "success"
+	wg.Done()
 }
 
 func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
