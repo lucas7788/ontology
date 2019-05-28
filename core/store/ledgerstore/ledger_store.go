@@ -727,11 +727,6 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		key := make([]byte, 4, 4)
 		binary.LittleEndian.PutUint32(key[:], block.Header.Height)
 		LevelDBMock.Put(key, sink.Bytes(), nil)
-
-		if block.Header.Height == 54 {
-			log.Errorf("before: %x, blockHeight: %d\n", readCache.Hash(), block.Header.Height)
-			log.Errorf("after: %x, blockHeight: %d\n", result.WriteSet.Hash(), block.Header.Height)
-		}
 	}
 
 	if block.Header.Height < this.stateHashCheckHeight {
