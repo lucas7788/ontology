@@ -27,7 +27,7 @@ type ExecuteInfo struct {
 }
 
 func main() {
-	checkOneBlock()
+	checkAllBlock()
 }
 
 func checkOneBlock() {
@@ -107,7 +107,7 @@ func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerSto
 }
 
 func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup) {
-	for i := uint32(0); 4*i+offset < currentBlockHeight; i++ {
+	for i := uint32(534300); 4*i+offset < currentBlockHeight; i++ {
 		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB)
 		if err != nil {
 			fmt.Println("err:", err)
@@ -148,7 +148,6 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 	fmt.Println("*****************")
 	fmt.Println("*****************")
 	fmt.Printf("hash:  %x", executeInfo.WriteSet.Hash())
-
 
 	//if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
 	//
