@@ -676,7 +676,13 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	cache := storage.NewCacheDB(overlay)
 	for _, tx := range block.Transactions {
 		cache.Reset()
+		//fmt.Fprint(os.Stderr, "begin transaction\n")
+		//if block.Header.Height == 534300{
+		//	overlaydb.IS_SHOW = true
+		//}
 		notify, e := this.handleTransaction(overlay, cache, block, tx)
+		//fmt.Fprint(os.Stderr, "end transaction\n")
+
 		if e != nil {
 			err = e
 			return
@@ -684,6 +690,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 
 		result.Notify = append(result.Notify, notify)
 	}
+	//overlaydb.IS_SHOW = false
 
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
@@ -816,10 +823,10 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 	if neovm.PrintOpcode {
 		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
 	}
+	//if blockHeight >= 534301 {
+	//	panic("534301")
+	//}
 
-	if blockHeight >= 2981152 {
-		panic("2981152")
-	}
 	result.WriteSet.ForEach(func(key, val []byte) {
 		if len(val) == 0 {
 			this.stateStore.BatchDeleteRawKey(key)
@@ -1106,9 +1113,10 @@ func (this *LedgerStoreImp) GetEventNotifyByBlock(height uint32) ([]*event.Execu
 
 //PreExecuteContract return the result of smart contract execution without commit to store
 func (this *LedgerStoreImp) PreExecuteContract(tx *types.Transaction) (*sstate.PreExecResult, error) {
+
 	height := this.GetCurrentBlockHeight()
 	stf := &sstate.PreExecResult{State: event.CONTRACT_STATE_FAIL, Gas: neovm.MIN_TRANSACTION_GAS, Result: nil}
-
+	//return stf, errors.NewErr("")
 	config := &smartcontract.Config{
 		Time:      uint32(time.Now().Unix()),
 		Height:    height + 1,

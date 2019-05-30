@@ -20,27 +20,30 @@ package overlaydb
 
 import (
 	"crypto/sha256"
-
+	"fmt"
 	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/store/common"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"os"
 )
 
 type OverlayDB struct {
 	store     common.PersistStore
 	memdb     *MemDB
-	readCache *MemDB
+	ReadCache *MemDB
 	dbErr     error
 }
 
-const initCap = 4 * 1024 * 1024
-const initkvNum = 1024
+var IS_SHOW = false
+
+const initCap = 4 * 1024
+const initkvNum = 128
 
 func NewOverlayDB(store common.PersistStore) *OverlayDB {
 	return &OverlayDB{
 		store:     store,
 		memdb:     NewMemDB(initCap, initkvNum),
-		readCache: NewMemDB(initCap, initkvNum),
+		ReadCache: NewMemDB(initCap, initkvNum),
 	}
 }
 
@@ -58,29 +61,49 @@ func (self *OverlayDB) SetError(err error) {
 
 // if key is deleted, value == nil
 func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
+	if comm.ToHexString(key) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+		fmt.Printf("")
+	}
 	var unknown bool
 	value, unknown = self.memdb.Get(key)
 	if unknown == false {
+		if IS_SHOW{
+			fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
+		}
 		return value, nil
 	}
 
 	value, err = self.store.Get(key)
 	if err != nil {
 		if err == common.ErrNotFound {
+			if IS_SHOW{
+				fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
+			}
 			return nil, nil
 		}
 		self.dbErr = err
+		if IS_SHOW{
+			fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
+		}
 		return nil, err
 	}
-	self.readCache.Put(key, value)
-	//log.Errorf("readCache.Put key: %x, value: %x, readCache: len: %d\n", key, value, self.readCache.Len())
+	if IS_SHOW{
+		fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
+	}
+	self.ReadCache.Put(key, value)
 	return
 }
 func (self *OverlayDB) GetReadCache() *MemDB {
-	return self.readCache
+	return self.ReadCache
 }
 
 func (self *OverlayDB) Put(key []byte, value []byte) {
+	if comm.ToHexString(key) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+		fmt.Println("")
+	}
+	if IS_SHOW{
+		fmt.Fprintf(os.Stderr, "PUT*************key:%x, val: %x\n", key, value)
+	}
 	self.memdb.Put(key, value)
 }
 
@@ -120,5 +143,5 @@ func (self *OverlayDB) NewIterator(key []byte) common.StoreIterator {
 	backIter := self.store.NewIterator(key)
 	memIter := self.memdb.NewIterator(prefixRange)
 
-	return NewJoinIter(memIter, backIter)
+	return NewJoinIter(memIter, backIter, self.ReadCache)
 }

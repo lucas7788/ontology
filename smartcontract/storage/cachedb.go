@@ -19,6 +19,7 @@
 package storage
 
 import (
+	"fmt"
 	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/payload"
 	"github.com/ontio/ontology/core/store/common"
@@ -32,6 +33,7 @@ type CacheDB struct {
 	memdb      *overlaydb.MemDB
 	backend    *overlaydb.OverlayDB
 	keyScratch []byte
+	readCache  *overlaydb.MemDB
 }
 
 const initCap = 16 * 1024
@@ -41,6 +43,7 @@ const initKvNum = 16
 func NewCacheDB(store *overlaydb.OverlayDB) *CacheDB {
 	return &CacheDB{
 		backend: store,
+		readCache: store.ReadCache,
 		memdb:   overlaydb.NewMemDB(initCap, initKvNum),
 	}
 }
@@ -80,6 +83,9 @@ func (self *CacheDB) Put(key []byte, value []byte) {
 
 func (self *CacheDB) put(prefix common.DataEntryPrefix, key []byte, value []byte) {
 	self.keyScratch = makePrefixedKey(self.keyScratch, byte(prefix), key)
+	if comm.ToHexString(self.keyScratch) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+		fmt.Println("")
+	}
 	self.memdb.Put(self.keyScratch, value)
 }
 
@@ -154,7 +160,7 @@ func (self *CacheDB) NewIterator(key []byte) common.StoreIterator {
 	backIter := self.backend.NewIterator(pkey)
 	memIter := self.memdb.NewIterator(prefixRange)
 
-	return &Iter{overlaydb.NewJoinIter(memIter, backIter)}
+	return &Iter{overlaydb.NewJoinIter(memIter, backIter, self.readCache)}
 }
 
 type Iter struct {
