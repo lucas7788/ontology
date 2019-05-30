@@ -42,9 +42,9 @@ const initKvNum = 16
 // NewCacheDB return a new contract cache
 func NewCacheDB(store *overlaydb.OverlayDB) *CacheDB {
 	return &CacheDB{
-		backend: store,
+		backend:   store,
 		readCache: store.ReadCache,
-		memdb:   overlaydb.NewMemDB(initCap, initKvNum),
+		memdb:     overlaydb.NewMemDB(initCap, initKvNum),
 	}
 }
 
