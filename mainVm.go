@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/ontio/ontology/common"
@@ -83,7 +84,7 @@ func checkAllBlock() {
 	}
 
 	wg.Wait()
-	fmt.Println("Current BlockHeight: %d", ledgerStore.GetCurrentBlockHeight())
+	fmt.Println("Current BlockHeight: ", ledgerStore.GetCurrentBlockHeight())
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
 }
@@ -107,7 +108,7 @@ func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerSto
 }
 
 func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup) {
-	for i := uint32(534300); 4*i+offset < currentBlockHeight; i++ {
+	for i := uint32(133575); 4*i+offset < currentBlockHeight; i++ {
 		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB)
 		if err != nil {
 			fmt.Println("err:", err)
@@ -130,44 +131,44 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 	}
 	refreshGlobalParam(executeInfo.GasTable)
 	cache := storage.NewCacheDB(overlay)
-	overlaydb.IS_SHOW = false
+	//overlaydb.IS_SHOW = false
 	for _, tx := range block.Transactions {
 		cache.Reset()
-		fmt.Fprint(os.Stderr, "begin transaction\n")
+		//fmt.Fprint(os.Stderr, "begin transaction\n")
 		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
-		fmt.Fprint(os.Stderr, "end transaction\n")
+		//fmt.Fprint(os.Stderr, "end transaction\n")
 		if e != nil {
 			fmt.Println("err:", e)
 			return
 		}
 	}
-	overlaydb.IS_SHOW = false
+	//overlaydb.IS_SHOW = false
 
 	writeSet := overlay.GetWriteSet()
-	fmt.Printf("hash:  %x", writeSet.Hash())
-	fmt.Println("*****************")
-	fmt.Println("*****************")
-	fmt.Printf("hash:  %x", executeInfo.WriteSet.Hash())
+	//fmt.Printf("hash:  %x", writeSet.Hash())
+	//fmt.Println("*****************")
+	//fmt.Println("*****************")
+	//fmt.Printf("hash:  %x", executeInfo.WriteSet.Hash())
 
-	//if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
-	//
-	//	writeSet.Hash()
-	//	fmt.Println("**********************")
-	//	executeInfo.WriteSet.Hash()
-	//
-	//	//tempMap := make(map[string]string)
-	//	//writeSet.ForEach(func(key, val []byte) {
-	//	//	tempMap[common.ToHexString(key)] = common.ToHexString(val)
-	//	//})
-	//	//executeInfo.WriteSet.ForEach(func(key, val []byte) {
-	//	//	if tempMap[common.ToHexString(key)] != common.ToHexString(val) {
-	//	//		fmt.Printf("key:%x, value: %x\n", key, val)
-	//	//	}
-	//	//})
-	//
-	//	//fmt.Printf("blockheight:%d, writeSet.Hash:%x, executeInfo.WriteSet.Hash:%x\n", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
-	//	panic("here")
-	//}
+	if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
+
+		//writeSet.Hash()
+		//fmt.Println("**********************")
+		//executeInfo.WriteSet.Hash()
+
+		//tempMap := make(map[string]string)
+		//writeSet.ForEach(func(key, val []byte) {
+		//	tempMap[common.ToHexString(key)] = common.ToHexString(val)
+		//})
+		//executeInfo.WriteSet.ForEach(func(key, val []byte) {
+		//	if tempMap[common.ToHexString(key)] != common.ToHexString(val) {
+		//		fmt.Printf("key:%x, value: %x\n", key, val)
+		//	}
+		//})
+
+		fmt.Printf("blockheight:%d, writeSet.Hash:%x, executeInfo.WriteSet.Hash:%x\n", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
+		panic(executeInfo.Height)
+	}
 
 	fmt.Println("blockHeight: ", executeInfo.Height)
 
