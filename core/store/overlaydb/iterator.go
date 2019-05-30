@@ -43,9 +43,9 @@ type JoinIter struct {
 
 func NewJoinIter(memIter, backendIter common.StoreIterator, readCache *MemDB) *JoinIter {
 	return &JoinIter{
-		backend: backendIter,
-		memdb:   memIter,
-		cmp:     comparer.DefaultComparer,
+		backend:   backendIter,
+		memdb:     memIter,
+		cmp:       comparer.DefaultComparer,
 		readCache: readCache,
 	}
 }

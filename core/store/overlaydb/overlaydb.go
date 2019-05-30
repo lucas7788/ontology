@@ -67,7 +67,7 @@ func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
 	var unknown bool
 	value, unknown = self.memdb.Get(key)
 	if unknown == false {
-		if IS_SHOW{
+		if IS_SHOW {
 			fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
 		}
 		return value, nil
@@ -76,18 +76,18 @@ func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
 	value, err = self.store.Get(key)
 	if err != nil {
 		if err == common.ErrNotFound {
-			if IS_SHOW{
+			if IS_SHOW {
 				fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
 			}
 			return nil, nil
 		}
 		self.dbErr = err
-		if IS_SHOW{
+		if IS_SHOW {
 			fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
 		}
 		return nil, err
 	}
-	if IS_SHOW{
+	if IS_SHOW {
 		fmt.Fprintf(os.Stderr, "*************key:%x, val: %x\n", key, value)
 	}
 	self.ReadCache.Put(key, value)
@@ -101,7 +101,7 @@ func (self *OverlayDB) Put(key []byte, value []byte) {
 	if comm.ToHexString(key) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
 		fmt.Println("")
 	}
-	if IS_SHOW{
+	if IS_SHOW {
 		fmt.Fprintf(os.Stderr, "PUT*************key:%x, val: %x\n", key, value)
 	}
 	self.memdb.Put(key, value)
