@@ -674,15 +674,20 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	}
 
 	cache := storage.NewCacheDB(overlay)
+	//index := 0
 	for _, tx := range block.Transactions {
 		cache.Reset()
-		//fmt.Fprint(os.Stderr, "begin transaction\n")
-		//if block.Header.Height == 534300{
-		//	overlaydb.IS_SHOW = true
+		//fmt.Fprintf(os.Stderr, "begin transaction, index:%d\n", index)
+		//if block.Header.Height == 1294201{
+		//	//overlaydb.IS_SHOW = false
+		//	neovm.PrintOpcode = false
+		//} else {
+		//	neovm.PrintOpcode = false
 		//}
 		notify, e := this.handleTransaction(overlay, cache, block, tx)
-		//fmt.Fprint(os.Stderr, "end transaction\n")
-
+		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
+		//neovm.PrintOpcode = false
+        //index++
 		if e != nil {
 			err = e
 			return
@@ -695,10 +700,10 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
 
-	hash := result.WriteSet.Hash()
-	if neovm.PrintOpcode {
-		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, hash)
-	}
+	//hash := result.WriteSet.Hash()
+	//if neovm.PrintOpcode {
+	//	fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, hash)
+	//}
 
 	if MOCKDBSTORE {
 		sink := common.NewZeroCopySink(nil)
@@ -819,12 +824,10 @@ func (this *LedgerStoreImp) saveBlockToStateStore(block *types.Block, result sto
 
 	log.Debugf("the state transition hash of block %d is:%s", blockHeight, result.Hash.ToHexString())
 
-	hash := result.WriteSet.Hash()
-	if neovm.PrintOpcode {
-		fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
-	}
-	//if blockHeight >= 534301 {
-	//	panic("534301")
+	//hash := result.WriteSet.Hash()
+	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", blockHeight, hash)
+	//if blockHeight >= 1294202 {
+	//	panic("1294202")
 	//}
 
 	result.WriteSet.ForEach(func(key, val []byte) {
@@ -1116,7 +1119,7 @@ func (this *LedgerStoreImp) PreExecuteContract(tx *types.Transaction) (*sstate.P
 
 	height := this.GetCurrentBlockHeight()
 	stf := &sstate.PreExecResult{State: event.CONTRACT_STATE_FAIL, Gas: neovm.MIN_TRANSACTION_GAS, Result: nil}
-	//return stf, errors.NewErr("")
+	return stf, errors.NewErr("")
 	config := &smartcontract.Config{
 		Time:      uint32(time.Now().Unix()),
 		Height:    height + 1,
