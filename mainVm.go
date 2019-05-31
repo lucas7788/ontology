@@ -15,6 +15,7 @@ import (
 	"github.com/ontio/ontology/smartcontract/service/neovm"
 	"github.com/ontio/ontology/smartcontract/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	_ "net/http/pprof"
 	"os"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ func main() {
 
 func checkOneBlock() {
 	blockHeight := uint32(534300)
+	blockHeight = uint32(1294201)
 	ledgerstore.MOCKDBSTORE = false
 
 	dbDir := "./Chain/ontology"
@@ -83,6 +85,7 @@ func checkAllBlock() {
 		go handleExecuteInfo(ch, ledgerStore, wg)
 	}
 
+	//log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
 	wg.Wait()
 	fmt.Println("Current BlockHeight: ", ledgerStore.GetCurrentBlockHeight())
 	fmt.Println("start: ", start)
@@ -108,7 +111,7 @@ func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerSto
 }
 
 func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup) {
-	for i := uint32(133575); 4*i+offset < currentBlockHeight; i++ {
+	for i := uint32(323510); 4*i+offset < currentBlockHeight; i++ {
 		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB)
 		if err != nil {
 			fmt.Println("err:", err)
@@ -132,11 +135,14 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 	refreshGlobalParam(executeInfo.GasTable)
 	cache := storage.NewCacheDB(overlay)
 	//overlaydb.IS_SHOW = false
+	neovm.PrintOpcode = false
+	//index := 0
 	for _, tx := range block.Transactions {
 		cache.Reset()
-		//fmt.Fprint(os.Stderr, "begin transaction\n")
+		//fmt.Fprintf(os.Stderr, "begin transaction, index:%d\n", index)
 		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
-		//fmt.Fprint(os.Stderr, "end transaction\n")
+		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
+		//index++
 		if e != nil {
 			fmt.Println("err:", e)
 			return

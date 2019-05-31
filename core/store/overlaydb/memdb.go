@@ -458,6 +458,7 @@ func NewMemDB(capacity int, kvNum int) *MemDB {
 func (self *MemDB) Hash() []byte {
 	var kv []string
 	self.ForEach(func(key, val []byte) {
+		//fmt.Printf("key: %x, value: %x\n", key, val)
 		if len(val) == 0 {
 			var buf [4]byte
 			binary.BigEndian.PutUint32(buf[:], uint32(len(key)))

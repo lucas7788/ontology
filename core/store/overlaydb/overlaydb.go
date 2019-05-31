@@ -35,6 +35,7 @@ type OverlayDB struct {
 }
 
 var IS_SHOW = false
+var IS_SHOW_TEST = false
 
 const initCap = 4 * 1024
 const initkvNum = 128
@@ -61,8 +62,9 @@ func (self *OverlayDB) SetError(err error) {
 
 // if key is deleted, value == nil
 func (self *OverlayDB) Get(key []byte) (value []byte, err error) {
-	if comm.ToHexString(key) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+	if comm.ToHexString(key) == "058367e1a4a25772ca49013d6f3a13ac46838516c34c55434b595f4845524f5f524f554e445f015f524f554e445f454e44494e475f424c4f434b5f484549474854" {
 		fmt.Printf("")
+		IS_SHOW_TEST = false
 	}
 	var unknown bool
 	value, unknown = self.memdb.Get(key)
@@ -98,7 +100,7 @@ func (self *OverlayDB) GetReadCache() *MemDB {
 }
 
 func (self *OverlayDB) Put(key []byte, value []byte) {
-	if comm.ToHexString(key) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+	if comm.ToHexString(key) == "058367e1a4a25772ca49013d6f3a13ac46838516c34c55434b595f4845524f5f524f554e445f015f524f554e445f454e44494e475f424c4f434b5f484549474854" {
 		fmt.Println("")
 	}
 	if IS_SHOW {
