@@ -181,7 +181,7 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 		if PrintOpcode {
 			t, _ := Dump(this.Engine.EvaluationStack.GetE())
 			_, _ = fmt.Fprintln(os.Stderr, "EvalStack:", t)
-			if len(this.Engine.EvaluationStack.GetE()) == 3 && name=="SYSCALL"{
+			if len(this.Engine.EvaluationStack.GetE()) == 3 && name == "SYSCALL" {
 				fmt.Println("")
 			}
 			t2, _ := Dump(this.Engine.AltStack.GetE())
