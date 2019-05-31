@@ -83,7 +83,7 @@ func (self *CacheDB) Put(key []byte, value []byte) {
 
 func (self *CacheDB) put(prefix common.DataEntryPrefix, key []byte, value []byte) {
 	self.keyScratch = makePrefixedKey(self.keyScratch, byte(prefix), key)
-	if comm.ToHexString(self.keyScratch) == "050000000000000000000000000000000000000007766f7465496e666f506f6f6c022bf80145bd448d993abffa237f4cd06d9df13eaad37afce5cb71d80c47b03feb026e5307cab2a1b050fe3ecd1bcb6877a415d9e7" {
+	if comm.ToHexString(self.keyScratch) == "058367e1a4a25772ca49013d6f3a13ac46838516c34c55434b595f4845524f5f524f554e445f015f524f554e445f454e44494e475f424c4f434b5f484549474854" {
 		fmt.Println("")
 	}
 	self.memdb.Put(self.keyScratch, value)
@@ -138,7 +138,9 @@ func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte) ([]byte, err
 		}
 		value = v
 	}
-
+	if overlaydb.IS_SHOW_TEST {
+		fmt.Printf("&&&&&&key: %x, val: %x\n", self.keyScratch, value)
+	}
 	return value, nil
 }
 
