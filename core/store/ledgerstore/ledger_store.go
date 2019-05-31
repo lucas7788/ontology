@@ -687,7 +687,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		notify, e := this.handleTransaction(overlay, cache, block, tx)
 		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
 		//neovm.PrintOpcode = false
-        //index++
+		//index++
 		if e != nil {
 			err = e
 			return
