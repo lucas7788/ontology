@@ -83,6 +83,57 @@ func HeaderFromRawBytes(raw []byte) (*Header, error) {
 	return header, nil
 
 }
+func (bd *Header) Deserialization2(source *common.ZeroCopySource) error {
+	err := bd.deserializationUnsigned(source)
+	if err != nil {
+		return err
+	}
+
+	n, _, irregular, eof := source.NextVarUint()
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	if irregular {
+		return common.ErrIrregularData
+	}
+
+	for i := 0; i < int(n); i++ {
+		_, _, irregular, eof := source.NextVarBytes()
+		if eof {
+			return io.ErrUnexpectedEOF
+		}
+		if irregular {
+			return common.ErrIrregularData
+		}
+		//pubkey, err := keypair.DeserializePublicKey(buf)
+		//if err != nil {
+		//	return err
+		//}
+		//bd.Bookkeepers = append(bd.Bookkeepers, pubkey)
+	}
+
+	m, _, irregular, eof := source.NextVarUint()
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	if irregular {
+		return common.ErrIrregularData
+	}
+
+	for i := 0; i < int(m); i++ {
+		sig, _, irregular, eof := source.NextVarBytes()
+		if eof {
+			return io.ErrUnexpectedEOF
+		}
+		if irregular {
+			return common.ErrIrregularData
+		}
+		bd.SigData = append(bd.SigData, sig)
+	}
+
+	return nil
+}
+
 func (bd *Header) Deserialization(source *common.ZeroCopySource) error {
 	err := bd.deserializationUnsigned(source)
 	if err != nil {
