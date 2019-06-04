@@ -106,9 +106,38 @@ func (this *BlockStore) ContainBlock(blockHash common.Uint256) (bool, error) {
 	}
 	return true, nil
 }
-
-//GetBlock return block by block hash
+func (this *BlockStore) GetBlockBytes(blockHash common.Uint256) ([]byte, error) {
+	key := this.getHeaderKey(blockHash)
+	value, err := this.store.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
 func (this *BlockStore) GetBlock(blockHash common.Uint256) (*types.Block, error) {
+	header, txHashes, err := this.loadRawHeaderWithTx(blockHash)
+	if err != nil {
+		return nil, err
+	}
+	txList := make([]*types.Transaction, 0, len(txHashes))
+	for _, txHash := range txHashes {
+		tx, _, err := this.GetTransaction(txHash)
+		if err != nil {
+			return nil, fmt.Errorf("GetTransaction %s error %s", txHash.ToHexString(), err)
+		}
+		if tx == nil {
+			return nil, fmt.Errorf("cannot get transaction %s", txHash.ToHexString())
+		}
+		txList = append(txList, tx)
+	}
+	block := &types.Block{
+		Header:       header,
+		Transactions: txList,
+	}
+	return block, nil
+}
+//GetBlock return block by block hash
+func (this *BlockStore) GetBlock2(blockHash common.Uint256) (*types.Block, error) {
 	var block *types.Block
 	if this.enableCache {
 		block = this.cache.GetBlock(blockHash)
@@ -138,6 +167,37 @@ func (this *BlockStore) GetBlock(blockHash common.Uint256) (*types.Block, error)
 	return block, nil
 }
 
+func (this *BlockStore) loadRawHeaderWithTx(blockHash common.Uint256) (*types.Header, []common.Uint256, error) {
+	key := this.getHeaderKey(blockHash)
+	value, err := this.store.Get(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	source := common.NewZeroCopySource(value)
+	sysFee := new(common.Fixed64)
+	err = sysFee.Deserialization(source)
+	if err != nil {
+		return nil, nil, err
+	}
+	header := new(types.Header)
+	err = header.Deserialization(source)
+	if err != nil {
+		return nil, nil, err
+	}
+	txSize, eof := source.NextUint32()
+	if eof {
+		return nil, nil, io.ErrUnexpectedEOF
+	}
+	txHashes := make([]common.Uint256, 0, int(txSize))
+	for i := uint32(0); i < txSize; i++ {
+		txHash, eof := source.NextHash()
+		if eof {
+			return nil, nil, io.ErrUnexpectedEOF
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return header, txHashes, nil
+}
 func (this *BlockStore) loadHeaderWithTx(blockHash common.Uint256) (*types.Header, []common.Uint256, error) {
 	key := this.getHeaderKey(blockHash)
 	value, err := this.store.Get(key)
