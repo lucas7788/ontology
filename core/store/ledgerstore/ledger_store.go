@@ -1082,6 +1082,9 @@ func (this *LedgerStoreImp) GetBlockByHash(blockHash common.Uint256) (*types.Blo
 	return this.blockStore.GetBlock(blockHash)
 }
 
+func (this *LedgerStoreImp) GetBlockBytesByHash(blockHash common.Uint256) ([]byte, error) {
+	return this.blockStore.GetBlockBytes(blockHash)
+}
 //GetBlockByHeight return block by height.
 func (this *LedgerStoreImp) GetBlockByHeight(height uint32) (*types.Block, error) {
 	blockHash := this.GetBlockHash(height)

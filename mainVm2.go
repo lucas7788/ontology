@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
@@ -15,6 +16,8 @@ import (
 	"github.com/ontio/ontology/smartcontract/service/neovm"
 	"github.com/ontio/ontology/smartcontract/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	"io"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"sync"
@@ -26,15 +29,130 @@ type ExecuteInfo struct {
 	ReadSet  *overlaydb.MemDB
 	WriteSet *overlaydb.MemDB
 	GasTable map[string]uint64
+	BlockInfo *types.Block
 }
 
 func main() {
-	checkAllBlock()
+	go func() {
+		http.ListenAndServe("localhost:10000", nil)
+	}()
+	runMode := flag.String("name", "checkall", "run mode")
+	blockHeight := flag.Int("blockHeight", 0, "run mode")
+	flag.Parse()
+	if *runMode == "checkone" {
+		fmt.Println("checkone")
+		checkOneBlock()
+	} else if *runMode == "updatedata" {
+		fmt.Println("saveBlockToReadWriteSet")
+		//1989103  2050774
+		saveBlockToReadWriteSet()
+	} else {
+		fmt.Println("checkAllBlock")
+		checkAllBlock(uint32(*blockHeight))
+	}
+
+	//saveBlockToReadWriteSet()
+	//checkAllBlock()
+	//checkOneBlock()
+}
+
+
+func saveBlockToReadWriteSet() {
+	dbDir := "./Chain/ontology"
+
+	ledgerstore.MOCKDBSTORE = false
+
+	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb")
+	levelDB, err := ledgerstore.OpenLevelDB(modkDBPath)
+	if err != nil {
+		fmt.Println("modkDBPath err: ", err)
+		return
+	}
+
+	modkDBPath2 := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb2")
+	levelDB2, err := ledgerstore.OpenLevelDB(modkDBPath2)
+	if err != nil && err.Error() != "leveldb: not found" {
+		fmt.Println("modkDBPath2 err: ", err)
+		return
+	}
+
+	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
+	if err != nil {
+		fmt.Println("NewLedgerStore err:", err)
+		return
+	}
+	initLedgerStore(ledgerStore)
+
+	currentHeight := uint32(0)
+	if levelDB2 != nil {
+		currentHeightBytes,err := levelDB2.Get([]byte("currentHeight"), nil)
+		if err != nil && err.Error() != "leveldb: not found"{
+			fmt.Println("Get currentHeight err:", err)
+			return
+		}
+		if currentHeightBytes != nil {
+			currentHeight = binary.LittleEndian.Uint32(currentHeightBytes)
+			fmt.Println("&&& currentHeight:", currentHeight)
+		}
+	}
+
+	currentBlockHeight := ledgerStore.GetCurrentBlockHeight()
+	var wg = new(sync.WaitGroup)
+	lock := new(sync.Mutex)
+	for i:=uint32(0);i<10;i++ {
+		wg.Add(1)
+		go updateData(levelDB,levelDB2, ledgerStore, i, currentBlockHeight, wg, currentHeight, lock)
+	}
+	wg.Wait()
+	fmt.Println("currentBlockHeight:", currentBlockHeight)
+	fmt.Println("end")
+}
+
+func updateData(levelDB,levelDB2 *leveldb.DB, ledgerStore *ledgerstore.LedgerStoreImp, offset uint32, currentBlockHeight uint32, wg *sync.WaitGroup, currentHeight uint32, lock *sync.Mutex) {
+	sink := common.NewZeroCopySink(nil)
+	for i := uint32(currentHeight/10); 10*i+offset < currentBlockHeight; i++ {
+
+		//read WriteSet
+		key := make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(key[:], 10*i+offset)
+
+		v, err := levelDB2.Get(key, nil)
+		if err != nil {
+			fmt.Errorf("levelDB2.Get: %s, height: %d", err, 10*i+offset)
+		}
+		if v != nil {
+			continue
+		}
+
+		dataBytes, err := levelDB.Get(key, nil)
+		if err != nil {
+			fmt.Printf("err:%s, height:%d", err, 10*i+offset)
+			panic(10*i+offset)
+			return
+		}
+		sink.Reset()
+		sink.WriteVarBytes(dataBytes)
+		blockHash := ledgerStore.GetBlockHash(10*i+offset)
+
+		value, err := ledgerStore.GetBlockBytesByHash(blockHash)
+		if err != nil {
+			return
+		}
+		sink.WriteVarBytes(value)
+		levelDB2.Put(key, sink.Bytes(), nil)
+		currentHeight = 10*i+offset
+		height := make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(height[:], currentHeight)
+		levelDB2.Put([]byte("currentHeight"), height, nil)
+		fmt.Println("updateData currentHeight:", currentHeight)
+	}
+	wg.Done()
 }
 
 func checkOneBlock() {
 	blockHeight := uint32(534300)
 	blockHeight = uint32(1294201)
+	blockHeight = uint32(80003)
 	ledgerstore.MOCKDBSTORE = false
 
 	dbDir := "./Chain/ontology"
@@ -49,18 +167,26 @@ func checkOneBlock() {
 	ledgerStore, err := ledgerstore.NewLedgerStore(dbDir, 3000000)
 	initLedgerStore(ledgerStore)
 
-	executeInfo, err := getExecuteInfoByHeight(blockHeight, levelDB)
+	executeInfo, err := getExecuteInfoByHeight(blockHeight, levelDB, ledgerStore)
+	if err !=nil {
+		fmt.Println("err:", err)
+		return
+	}
+	if executeInfo == nil {
+		fmt.Println("executeInfo is nil:")
+		return
+	}
 	execute(executeInfo, ledgerStore)
 }
 
-func checkAllBlock() {
+func checkAllBlock(blockHeight uint32) {
 	var wg = new(sync.WaitGroup)
 
 	ledgerstore.MOCKDBSTORE = false
 
 	dbDir := "./Chain/ontology"
 
-	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb")
+	modkDBPath := fmt.Sprintf("%s%s%s", dbDir, string(os.PathSeparator), "states"+"mockdb2")
 	levelDB, err := ledgerstore.OpenLevelDB(modkDBPath)
 	if err != nil {
 		fmt.Println("err: ", err)
@@ -77,7 +203,7 @@ func checkAllBlock() {
 
 	for i := uint32(0); i < 4; i++ {
 		wg.Add(1)
-		go sendExecuteInfoToCh(ch, i, currentBlockHeight, levelDB, wg)
+		go sendExecuteInfoToCh(ch, i, currentBlockHeight, levelDB, wg, ledgerStore, blockHeight)
 	}
 
 	for i := 0; i < 4; i++ {
@@ -87,7 +213,7 @@ func checkAllBlock() {
 
 	//log.Fatal(http.ListenAndServe("0.0.0.0:8080", nil))
 	wg.Wait()
-	fmt.Println("Current BlockHeight: ", ledgerStore.GetCurrentBlockHeight())
+	fmt.Println("checkAllBlock Current BlockHeight: ", ledgerStore.GetCurrentBlockHeight())
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
 }
@@ -110,9 +236,9 @@ func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerSto
 	}
 }
 
-func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup) {
-	for i := uint32(10000); 4*i+offset < currentBlockHeight; i++ {
-		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB)
+func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup, ledgerStore *ledgerstore.LedgerStoreImp,startHeight uint32) {
+	for i := uint32(startHeight/4); 4*i+offset < currentBlockHeight; i++ {
+		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB, ledgerStore)
 		if err != nil {
 			fmt.Println("err:", err)
 			return
@@ -126,21 +252,16 @@ func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeigh
 func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
 
 	overlay := overlaydb.NewOverlayDB(ledgerstore.NewMockDBWithMemDB(executeInfo.ReadSet))
-	hash := ledgerStore.GetBlockHash(executeInfo.Height)
-	block, err := ledgerStore.GetBlockByHash(hash)
-	if err != nil {
-		fmt.Println("err:", err)
-		return
-	}
+
 	refreshGlobalParam(executeInfo.GasTable)
 	cache := storage.NewCacheDB(overlay)
 	//overlaydb.IS_SHOW = false
 	neovm.PrintOpcode = false
 	//index := 0
-	for _, tx := range block.Transactions {
+	for _, tx := range executeInfo.BlockInfo.Transactions {
 		cache.Reset()
 		//fmt.Fprintf(os.Stderr, "begin transaction, index:%d\n", index)
-		_, e := handleTransaction(ledgerStore, overlay, cache, block, tx)
+		_, e := handleTransaction(ledgerStore, overlay, cache, executeInfo.BlockInfo, tx)
 		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
 		//index++
 		if e != nil {
@@ -176,22 +297,32 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 		panic(executeInfo.Height)
 	}
 
-	fmt.Println("blockHeight: ", executeInfo.Height)
+	fmt.Println("execute blockHeight: ", executeInfo.Height)
 
 	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
 	//
 	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, executeInfo.WriteSet.Hash())
 }
 
-func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB) (*ExecuteInfo, error) {
+func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB, ledgerStore *ledgerstore.LedgerStoreImp) (*ExecuteInfo, error) {
 	//get gasTable
 	key := make([]byte, 4, 4)
 	binary.LittleEndian.PutUint32(key[:], height)
 	dataBytes, err := levelDB.Get(key, nil)
+
 	if err != nil {
-		return nil, fmt.Errorf("get databytes error: %s", err)
+		return nil, fmt.Errorf("getExecuteInfoByHeight get databytes error: %s， height：%d", err, height)
 	}
 	source := common.NewZeroCopySource(dataBytes)
+	readWriteSetBytes,_, irregular,eof  := source.NextVarBytes()
+	if eof||irregular {
+		return nil, fmt.Errorf("eof or irregular error")
+	}
+	blockBytes,_, irregular,eof := source.NextVarBytes()
+	if eof||irregular {
+		return nil, fmt.Errorf("eof or irregular error")
+	}
+	source = common.NewZeroCopySource(readWriteSetBytes)
 	l, eof := source.NextUint32()
 	if eof {
 		return nil, fmt.Errorf("gastable length is wrong: %d", l)
@@ -242,12 +373,55 @@ func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB) (*ExecuteInfo, e
 		if eof {
 			break
 		}
-		if height == 54 {
-			log.Errorf("key:%x, value:%x", key, value)
-		}
 		writeSetDB.Put(key, value)
 	}
-	return &ExecuteInfo{Height: height, ReadSet: readSetDB, WriteSet: writeSetDB, GasTable: m}, nil
+	block,err := parseBlock(blockBytes, ledgerStore)
+	if err != nil {
+		return nil, err
+	}
+	return &ExecuteInfo{Height: height, ReadSet: readSetDB, WriteSet: writeSetDB, GasTable: m, BlockInfo:block}, nil
+}
+func parseBlock (value []byte, ledgerStore *ledgerstore.LedgerStoreImp) (*types.Block, error) {
+	source := common.NewZeroCopySource(value)
+	sysFee := new(common.Fixed64)
+	err := sysFee.Deserialization(source)
+	if err != nil {
+		return nil, err
+	}
+	header := new(types.Header)
+	err = header.Deserialization2(source)
+	if err != nil {
+		return nil, err
+	}
+	txSize, eof := source.NextUint32()
+	if eof {
+		return nil,io.ErrUnexpectedEOF
+	}
+	txHashes := make([]common.Uint256, 0, int(txSize))
+	for i := uint32(0); i < txSize; i++ {
+		txHash, eof := source.NextHash()
+		if eof {
+			return nil, io.ErrUnexpectedEOF
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	txList := make([]*types.Transaction, 0, len(txHashes))
+	for _, txHash := range txHashes {
+
+		tx, _, err := ledgerStore.GetTransaction(txHash)
+		if err != nil {
+			return nil, fmt.Errorf("GetTransaction %s error %s", txHash.ToHexString(), err)
+		}
+		if tx == nil {
+			return nil, fmt.Errorf("cannot get transaction %s", txHash.ToHexString())
+		}
+		txList = append(txList, tx)
+	}
+	block := &types.Block{
+		Header:       header,
+		Transactions: txList,
+	}
+	return block, nil
 }
 
 func initLedgerStore(ledgerStore *ledgerstore.LedgerStoreImp) {
