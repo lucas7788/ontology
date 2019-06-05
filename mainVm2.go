@@ -16,7 +16,7 @@ import (
 	"github.com/ontio/ontology/smartcontract/service/neovm"
 	"github.com/ontio/ontology/smartcontract/storage"
 	"github.com/syndtr/goleveldb/leveldb"
-	"io"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"sync"
@@ -31,10 +31,27 @@ type ExecuteInfo struct {
 	BlockInfo *types.Block
 }
 
+type Task interface {
+	ImplementTask()
+}
+
+type implTask struct{}
+
+func (self implTask) ImplementTask() {}
+
+type FinishedTask struct {
+	implTask
+}
+
+type ExecuteTask struct {
+	implTask
+	executeInfo *ExecuteInfo
+}
+
 func main() {
-	//go func() {
-	//	http.ListenAndServe("localhost:10000", nil)
-	//}()
+	go func() {
+		http.ListenAndServe("localhost:10000", nil)
+	}()
 	runMode := flag.String("name", "checkall", "run mode")
 	blockHeight := flag.Int("blockHeight", 0, "run mode")
 	flag.Parse()
@@ -49,10 +66,6 @@ func main() {
 		fmt.Println("checkAllBlock")
 		checkAllBlock(uint32(*blockHeight))
 	}
-
-	//saveBlockToReadWriteSet()
-	//checkAllBlock()
-	//checkOneBlock()
 }
 
 func saveBlockToReadWriteSet() {
@@ -93,11 +106,13 @@ func saveBlockToReadWriteSet() {
 			fmt.Println("&&& currentHeight:", currentHeight)
 		}
 	}
+	//1294239
+	//currentHeight = 1000000
 
 	currentBlockHeight := ledgerStore.GetCurrentBlockHeight()
 	var wg = new(sync.WaitGroup)
+	wg.Add(10)
 	for i := uint32(0); i < 10; i++ {
-		wg.Add(1)
 		go updateData(levelDB, levelDB2, ledgerStore, i, currentBlockHeight, wg, currentHeight)
 	}
 	wg.Wait()
@@ -106,6 +121,7 @@ func saveBlockToReadWriteSet() {
 }
 
 func updateData(levelDB, levelDB2 *leveldb.DB, ledgerStore *ledgerstore.LedgerStoreImp, offset uint32, currentBlockHeight uint32, wg *sync.WaitGroup, currentHeight uint32) {
+	defer wg.Done()
 	sink := common.NewZeroCopySink(nil)
 	blockSink := common.NewZeroCopySink(nil)
 	for i := uint32(currentHeight / 10); 10*i+offset < currentBlockHeight; i++ {
@@ -119,6 +135,7 @@ func updateData(levelDB, levelDB2 *leveldb.DB, ledgerStore *ledgerstore.LedgerSt
 			fmt.Errorf("levelDB2.Get: %s, height: %d", err, 10*i+offset)
 		}
 		if v != nil {
+			fmt.Println("has value height:", 10*i+offset)
 			continue
 		}
 
@@ -146,7 +163,6 @@ func updateData(levelDB, levelDB2 *leveldb.DB, ledgerStore *ledgerstore.LedgerSt
 		levelDB2.Put([]byte("currentHeight"), height, nil)
 		fmt.Println("updateData currentHeight:", currentHeight)
 	}
-	wg.Done()
 }
 
 func checkOneBlock() {
@@ -199,16 +215,14 @@ func checkAllBlock(blockHeight uint32) {
 
 	start := time.Now()
 
-	ch := make(chan interface{}, 100)
+	ch := make(chan Task, 100)
 	currentBlockHeight := ledgerStore.GetCurrentBlockHeight()
-
+	wg.Add(8)
 	for i := uint32(0); i < 4; i++ {
-		wg.Add(1)
 		go sendExecuteInfoToCh(ch, i, currentBlockHeight, levelDB, wg, ledgerStore, blockHeight)
 	}
 
 	for i := 0; i < 4; i++ {
-		wg.Add(1)
 		go handleExecuteInfo(ch, ledgerStore, wg)
 	}
 
@@ -219,35 +233,37 @@ func checkAllBlock(blockHeight uint32) {
 	fmt.Println("end: ", time.Now())
 }
 
-func handleExecuteInfo(ch <-chan interface{}, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
+func handleExecuteInfo(ch <-chan Task, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
 	for {
-		select {
-		case task, ok := <-ch:
-			if !ok {
-				wg.Done()
-				return
-			}
-			executeInfo, ok := task.(*ExecuteInfo)
-			if ok {
-				execute(executeInfo, ledgerStore)
-			} else {
-				wg.Done()
-			}
+		task, ok := <-ch
+		if !ok {
+			wg.Done()
+			return
+		}
+		switch t := task.(type) {
+		case *FinishedTask:
+			wg.Done()
+			return
+		case *ExecuteTask:
+			execute(t.executeInfo, ledgerStore)
 		}
 	}
 }
 
-func sendExecuteInfoToCh(ch chan<- interface{}, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup, ledgerStore *ledgerstore.LedgerStoreImp, startHeight uint32) {
+func sendExecuteInfoToCh(ch chan<- Task, offset uint32, currentBlockHeight uint32, levelDB *leveldb.DB, wg *sync.WaitGroup, ledgerStore *ledgerstore.LedgerStoreImp, startHeight uint32) {
+	defer wg.Done()
 	for i := uint32(startHeight / 4); 4*i+offset < currentBlockHeight; i++ {
 		executeInfo, err := getExecuteInfoByHeight(4*i+offset, levelDB, ledgerStore)
 		if err != nil {
 			fmt.Println("err:", err)
+			panic(fmt.Errorf("getExecuteInfoByHeight err:%s, height:%d", err, 4*i+offset))
 			return
 		}
-		ch <- executeInfo
+		ch <- &ExecuteTask{
+			executeInfo: executeInfo,
+		}
 	}
-	ch <- "success"
-	wg.Done()
+	ch <- &FinishedTask{}
 }
 
 func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
@@ -384,49 +400,6 @@ func getExecuteInfoByHeight(height uint32, levelDB *leveldb.DB, ledgerStore *led
 		return nil, err
 	}
 	return &ExecuteInfo{Height: height, ReadSet: readSetDB, WriteSet: writeSetDB, GasTable: m, BlockInfo: block}, nil
-}
-
-func parseBlock(value []byte, ledgerStore *ledgerstore.LedgerStoreImp) (*types.Block, error) {
-	source := common.NewZeroCopySource(value)
-	sysFee := new(common.Fixed64)
-	err := sysFee.Deserialization(source)
-	if err != nil {
-		return nil, err
-	}
-	header := new(types.Header)
-	err = header.Deserialization2(source)
-	if err != nil {
-		return nil, err
-	}
-	txSize, eof := source.NextUint32()
-	if eof {
-		return nil, io.ErrUnexpectedEOF
-	}
-	txHashes := make([]common.Uint256, 0, int(txSize))
-	for i := uint32(0); i < txSize; i++ {
-		txHash, eof := source.NextHash()
-		if eof {
-			return nil, io.ErrUnexpectedEOF
-		}
-		txHashes = append(txHashes, txHash)
-	}
-	txList := make([]*types.Transaction, 0, len(txHashes))
-	for _, txHash := range txHashes {
-
-		tx, _, err := ledgerStore.GetTransaction(txHash)
-		if err != nil {
-			return nil, fmt.Errorf("GetTransaction %s error %s", txHash.ToHexString(), err)
-		}
-		if tx == nil {
-			return nil, fmt.Errorf("cannot get transaction %s", txHash.ToHexString())
-		}
-		txList = append(txList, tx)
-	}
-	block := &types.Block{
-		Header:       header,
-		Transactions: txList,
-	}
-	return block, nil
 }
 
 func initLedgerStore(ledgerStore *ledgerstore.LedgerStoreImp) {
