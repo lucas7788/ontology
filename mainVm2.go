@@ -297,7 +297,7 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 		fmt.Printf("blockheight:%d, writeSet.Hash:%x, executeInfo.WriteSet.Hash:%x\n", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
 		panic(executeInfo.Height)
 	}
-    if executeInfo.Height%10000 == 0 {
+	if executeInfo.Height%10000 == 0 {
 		fmt.Println("execute blockHeight: ", executeInfo.Height)
 	}
 

@@ -136,6 +136,7 @@ func (this *BlockStore) GetBlock(blockHash common.Uint256) (*types.Block, error)
 	}
 	return block, nil
 }
+
 //GetBlock return block by block hash
 func (this *BlockStore) GetBlock2(blockHash common.Uint256) (*types.Block, error) {
 	var block *types.Block
