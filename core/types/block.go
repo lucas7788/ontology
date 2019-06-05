@@ -54,7 +54,7 @@ func (self *Block) Deserialization(source *common.ZeroCopySource) error {
 	if self.Header == nil {
 		self.Header = new(Header)
 	}
-	err := self.Header.Deserialization(source)
+	err := self.Header.Deserialization2(source)
 	if err != nil {
 		return err
 	}
