@@ -346,9 +346,16 @@ func checkAllBlock(startHeight uint32) {
 	//one goruntine read
 	fmt.Println("start: ", start)
 	var wg = new(sync.WaitGroup)
-	wg.Add(9)
+
+	wg.Add(18)
+
+	ch := make(chan Task, 100)
 	for i:=uint32(0);i<9;i++ {
-		go readFile(i,currentBlockHeight,ledgerStore, wg)
+		go readFile(i,currentBlockHeight, wg, ch)
+	}
+
+	for i:=uint32(0);i<9;i++ {
+		go executeCh(i, ch, ledgerStore, wg)
 	}
 	wg.Wait()
 
@@ -356,7 +363,7 @@ func checkAllBlock(startHeight uint32) {
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
 }
-func readFile(offset uint32,currentBlockHeight uint32, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) error {
+func readFile(offset uint32,currentBlockHeight uint32, wg *sync.WaitGroup,ch chan<- Task) error {
 	defer wg.Done()
 	fileName := fmt.Sprintf("readWriteSetAndBlock%d.txt", offset)
 	var f *os.File
@@ -376,18 +383,42 @@ func readFile(offset uint32,currentBlockHeight uint32, ledgerStore *ledgerstore.
 
     fmt.Printf("startHeight: %d, endHeight: %d\n", offset*500000, currentBlockHeight)
 
-	for i:=uint32(0) + offset*500000; i<currentBlockHeight;i++  {
+	for i:=offset*500000; i<currentBlockHeight;i++  {
 		dataBytes, err := serialization.ReadVarBytes(reader)
 		if err != nil || io.EOF == err {
+			ch <- &FinishedTask{}
+			fmt.Printf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
 			return fmt.Errorf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
 		}
-		executeInfo, err := getExecuteInfoByHeight(dataBytes)
-		if err != nil {
-			return err
+		ch <- &ReadTask{
+			blockHeight:i,
+			dataBytes:dataBytes,
 		}
-		execute(executeInfo, ledgerStore)
 	}
+	ch <- &FinishedTask{}
+	fmt.Printf("readFile finished, offset: %d\n", offset)
 	return nil
+}
+
+func executeCh(offset uint32, ch <- chan Task, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	for {
+		data,ok := <-ch
+		if !ok {
+			return nil
+		}
+		switch t:=data.(type) {
+		case *ReadTask:
+			executeInfo, err := getExecuteInfoByHeight(t.dataBytes)
+			if err != nil {
+				return err
+			}
+			execute(executeInfo, ledgerStore)
+		case *FinishedTask:
+			fmt.Printf("executeCh finished, offset: %d\n", offset)
+			return nil
+		}
+	}
 }
 
 func handleExecuteInfo(ch <-chan Task, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
