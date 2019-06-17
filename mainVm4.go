@@ -347,23 +347,19 @@ func checkAllBlock(startHeight uint32) {
 	fmt.Println("start: ", start)
 	var wg = new(sync.WaitGroup)
 
-	wg.Add(18)
-
-	ch := make(chan Task, 100)
-	for i:=uint32(0);i<9;i++ {
-		go readFile(i,currentBlockHeight, wg, ch)
-	}
+	wg.Add(9)
 
 	for i:=uint32(0);i<9;i++ {
-		go executeCh(i, ch, ledgerStore, wg)
+		go readFile(i,currentBlockHeight, wg)
 	}
+
 	wg.Wait()
 
 	fmt.Println("checkAllBlock Current BlockHeight: ", currentBlockHeight)
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
 }
-func readFile(offset uint32,currentBlockHeight uint32, wg *sync.WaitGroup,ch chan<- Task) error {
+func readFile(offset uint32,currentBlockHeight uint32, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	fileName := fmt.Sprintf("readWriteSetAndBlock%d.txt", offset)
 	var f *os.File
@@ -386,7 +382,7 @@ func readFile(offset uint32,currentBlockHeight uint32, wg *sync.WaitGroup,ch cha
 	for i:=offset*500000; i<currentBlockHeight;i++  {
 		dataBytes, err := serialization.ReadVarBytes(reader)
 		if err != nil || io.EOF == err {
-			ch <- &FinishedTask{}
+
 			fmt.Printf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
 			return fmt.Errorf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
 		}
