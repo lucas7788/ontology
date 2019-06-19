@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 	"flag"
+	"net/http"
 )
 
 type ExecuteInfo struct {
@@ -57,9 +58,9 @@ type ExecuteTask struct {
 }
 
 func main() {
-	//go func() {
-	//	http.ListenAndServe("localhost:10000", nil)
-	//}()
+	go func() {
+		http.ListenAndServe("localhost:10000", nil)
+	}()
 	runMode := flag.String("name", "checkall", "run mode")
 	blockHeight := flag.Int("blockHeight", 0, "run mode")
 	chainDir := flag.String("chainPath", "./Chain/ontology", "chain path")
@@ -322,7 +323,6 @@ func checkOneBlock() {
 		fmt.Println("executeInfo is nil:")
 		return
 	}
-	execute(executeInfo, ledgerStore)
 }
 
 func checkAllBlock(startHeight uint32, chainDir string) {
@@ -350,10 +350,15 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 
 	var wg = new(sync.WaitGroup)
 
-	wg.Add(9)
+	wg.Add(8)
 
-	for i:=uint32(0);i<9;i++ {
-		go readFile(i, currentBlockHeight, ledgerStore, wg)
+	ch := make(chan Task, 100)
+	for i:=uint32(0);i<4;i++ {
+		go readAndExecuteFile(i, currentBlockHeight, ledgerStore, wg, ch)
+	}
+
+	for i:=0;i<4;i++ {
+		go handleExecuteInfo(ch, ledgerStore, wg)
 	}
 
 	wg.Wait()
@@ -363,7 +368,7 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 	fmt.Println("end: ", time.Now())
 	return
 }
-func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
+func readAndExecuteFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup,ch chan <-Task) {
 	defer wg.Done()
 	fileName := fmt.Sprintf("readWriteSetAndBlock%d.txt", offset)
 	var f *os.File
@@ -395,9 +400,13 @@ func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.L
 			fmt.Println("getExecuteInfoByHeight err:", err)
 			return
 		}
-		execute(executeInfo, ledgerStore)
+		t := &ExecuteTask{
+			executeInfo:executeInfo,
+		}
+        ch <- t
 	}
-	log.Errorf("readFile finished, offset: %d\n", offset)
+	ch <- &FinishedTask{}
+	log.Errorf("readAndExecuteFile finished, offset: %d\n", offset)
 	return
 }
 
@@ -449,64 +458,31 @@ func sendExecuteInfoToCh(ch chan<- Task, readChan <-chan Task, wg *sync.WaitGrou
 }
 
 func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) {
-
 	overlay := overlaydb.NewOverlayDB(ledgerstore.NewMockDBWithMemDB(executeInfo.ReadSet))
 
 	refreshGlobalParam(executeInfo.GasTable)
 	cache := storage.NewCacheDB(overlay)
-	//overlaydb.IS_SHOW = false
-	//neovm.PrintOpcode = false
-	//index := 0
 	for _, tx := range executeInfo.BlockInfo.Transactions {
 		cache.Reset()
-		//fmt.Fprintf(os.Stderr, "begin transaction, index:%d\n", index)
 		_, e := handleTransaction(ledgerStore, overlay, executeInfo.GasTable, cache, executeInfo.BlockInfo, tx)
-		//fmt.Fprintf(os.Stderr, "end transaction, index:%d\n", index)
-		//index++
 		if e != nil {
 			fmt.Println("err:", e)
 			return
 		}
 	}
-	//overlaydb.IS_SHOW = false
 
 	writeSet := overlay.GetWriteSet()
-	//fmt.Printf("hash:  %x", writeSet.Hash())
-	//fmt.Println("*****************")
-	//fmt.Println("*****************")
-	//fmt.Printf("hash:  %x", executeInfo.WriteSet.Hash())
 
 	if !bytes.Equal(writeSet.Hash(), executeInfo.WriteSet.Hash()) {
 
-		//writeSet.Hash()
-		//fmt.Println("**********************")
-		//executeInfo.WriteSet.Hash()
-
-		//tempMap := make(map[string]string)
-		//writeSet.ForEach(func(key, val []byte) {
-		//	tempMap[common.ToHexString(key)] = common.ToHexString(val)
-		//})
-		//executeInfo.WriteSet.ForEach(func(key, val []byte) {
-		//	if tempMap[common.ToHexString(key)] != common.ToHexString(val) {
-		//		fmt.Printf("key:%x, value: %x\n", key, val)
-		//	}
-		//})
 
 		fmt.Printf("blockheight:%d, writeSet.Hash:%x, executeInfo.WriteSet.Hash:%x\n", executeInfo.Height, writeSet.Hash(), executeInfo.WriteSet.Hash())
 		panic(executeInfo.Height)
 	}
-	if executeInfo.Height % 100000 == 0 {
+	if executeInfo.Height % 100 == 0 {
 		fmt.Println("execute blockHeight: ", executeInfo.Height)
 	}
-	//if executeInfo.Height %1000000 == 0 {
-	//	fmt.Println("time: ", time.Now())
-	//}
-
-	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
-	//
-	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, executeInfo.WriteSet.Hash())
 }
-
 func getExecuteInfoByHeight(dataBytes []byte) (*ExecuteInfo, error) {
 
 	//get gasTable
