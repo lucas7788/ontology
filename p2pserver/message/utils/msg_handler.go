@@ -21,6 +21,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/ontio/ontology/blockrelayer"
 	"net"
 	"strconv"
 	"strings"
@@ -118,7 +119,7 @@ func PingHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args 
 	}
 	remotePeer.SetHeight(ping.Height)
 
-	height := ledger.DefLedger.GetCurrentBlockHeight()
+	height := blockrelayer.DefStorage.CurrentHeight()
 	p2p.SetHeight(uint64(height))
 	msg := msgpack.NewPongMsg(uint64(height))
 
@@ -208,7 +209,7 @@ func TransactionHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID
 	log.Trace("[p2p]receive transaction message", data.Addr, data.Id)
 
 	var trn = data.Payload.(*msgTypes.Trn)
-	actor.AddTransaction(trn.Txn)
+	//actor.AddTransaction(trn.Txn)
 	log.Trace("[p2p]receive Transaction message hash", trn.Txn.Hash())
 
 }
@@ -402,6 +403,26 @@ func AddrHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args 
 	}
 }
 
+type RawBlockMsg struct {
+	MerkleRoot common.Uint256
+	block      *blockrelayer.RawBlock
+}
+
+//Serialize message payload
+func (this *RawBlockMsg) Serialization(sink *common.ZeroCopySink) {
+	sink.WriteBytes(this.block.Payload)
+	sink.WriteHash(this.MerkleRoot)
+}
+
+func (this *RawBlockMsg) CmdType() string {
+	return msgCommon.BLOCK_TYPE
+}
+
+//Deserialize message payload
+func (this *RawBlockMsg) Deserialization(source *common.ZeroCopySource) error {
+	panic("unimplemented")
+}
+
 // DataReqHandle handles the data req(block/Transaction) from peer
 func DataReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args ...interface{}) {
 	log.Trace("[p2p]receive data req message", data.Addr, data.Id)
@@ -424,12 +445,14 @@ func DataReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, ar
 			switch data.(type) {
 			case *msgTypes.Block:
 				msg = data.(*msgTypes.Block)
+			case *RawBlockMsg:
+				msg = data.(*RawBlockMsg)
 			}
 		}
 		if msg == nil {
-			var merkleRoot common.Uint256
-			block, err := ledger.DefLedger.GetBlockByHash(hash)
-			if err != nil || block == nil || block.Header == nil {
+			rawBlock, err := blockrelayer.DefStorage.GetBlockByHash(hash)
+
+			if err != nil || rawBlock == nil || rawBlock.Payload == nil {
 				log.Debug("[p2p]can't get block by hash: ", hash,
 					" ,send not found message")
 				msg := msgpack.NewNotFound(hash)
@@ -440,19 +463,10 @@ func DataReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, ar
 				}
 				return
 			}
-			merkleRoot, err = ledger.DefLedger.GetStateMerkleRoot(block.Header.Height)
-			if err != nil {
-				log.Debugf("[p2p]failed to get state merkel root at height %v, err %v",
-					block.Header.Height, err)
-				msg := msgpack.NewNotFound(hash)
-				err := p2p.Send(remotePeer, msg)
-				if err != nil {
-					log.Warn(err)
-					return
-				}
-				return
+			msg = &RawBlockMsg{
+				MerkleRoot: common.UINT256_EMPTY,
+				block:      rawBlock,
 			}
-			msg = msgpack.NewBlock(block, merkleRoot)
 			saveRespCache(reqID, msg)
 		}
 		err := p2p.Send(remotePeer, msg)
@@ -462,23 +476,6 @@ func DataReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, ar
 		}
 
 	case common.TRANSACTION:
-		txn, err := ledger.DefLedger.GetTransaction(hash)
-		if err != nil {
-			log.Debug("[p2p]Can't get transaction by hash: ",
-				hash, " ,send not found message")
-			msg := msgpack.NewNotFound(hash)
-			err = p2p.Send(remotePeer, msg)
-			if err != nil {
-				log.Warn(err)
-				return
-			}
-		}
-		msg := msgpack.NewTxn(txn)
-		err = p2p.Send(remotePeer, msg)
-		if err != nil {
-			log.Warn(err)
-			return
-		}
 	}
 }
 
@@ -578,7 +575,7 @@ func GetHeadersFromHash(startHash common.Uint256, stopHash common.Uint256) ([]*t
 	headers := []*types.RawHeader{}
 	var startHeight uint32
 	var stopHeight uint32
-	curHeight := ledger.DefLedger.GetCurrentHeaderHeight()
+	curHeight := blockrelayer.DefStorage.CurrHeaderHeight() //header height
 	if startHash == common.UINT256_EMPTY {
 		if stopHash == common.UINT256_EMPTY {
 			if curHeight > msgCommon.MAX_BLK_HDR_CNT {
@@ -587,7 +584,8 @@ func GetHeadersFromHash(startHash common.Uint256, stopHash common.Uint256) ([]*t
 				count = curHeight
 			}
 		} else {
-			bkStop, err := ledger.DefLedger.GetRawHeaderByHash(stopHash)
+			bkStop, err := blockrelayer.DefStorage.GetHeaderByHash(stopHash)
+
 			if err != nil || bkStop == nil {
 				return nil, err
 			}
@@ -598,13 +596,13 @@ func GetHeadersFromHash(startHash common.Uint256, stopHash common.Uint256) ([]*t
 			}
 		}
 	} else {
-		bkStart, err := ledger.DefLedger.GetRawHeaderByHash(startHash)
+		bkStart, err := blockrelayer.DefStorage.GetHeaderByHash(startHash)
 		if err != nil || bkStart == nil {
 			return nil, err
 		}
 		startHeight = bkStart.Height
 		if stopHash != common.UINT256_EMPTY {
-			bkStop, err := ledger.DefLedger.GetRawHeaderByHash(stopHash)
+			bkStop, err := blockrelayer.DefStorage.GetHeaderByHash(stopHash)
 			if err != nil || bkStop == nil {
 				return nil, err
 			}
@@ -632,11 +630,21 @@ func GetHeadersFromHash(startHash common.Uint256, stopHash common.Uint256) ([]*t
 
 	var i uint32
 	for i = 1; i <= count; i++ {
-		hash := ledger.DefLedger.GetBlockHash(stopHeight + i)
-		hd, err := ledger.DefLedger.GetRawHeaderByHash(hash)
+		hash, err := blockrelayer.DefStorage.GetBlockHash(stopHeight + i)
+		if err != nil {
+			return nil, err
+		}
+
+		header, err := blockrelayer.DefStorage.GetHeaderByHash(hash)
 		if err != nil {
 			log.Debugf("[p2p]net_server GetBlockWithHeight failed with err=%s, hash=%x,height=%d\n", err.Error(), hash, stopHeight+i)
 			return nil, err
+		}
+		sink := common.NewZeroCopySink(nil)
+		header.Serialization(sink)
+		hd := &types.RawHeader{
+			Height:  header.Height,
+			Payload: sink.Bytes(),
 		}
 		headers = append(headers, hd)
 	}
