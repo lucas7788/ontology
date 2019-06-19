@@ -58,9 +58,9 @@ type ExecuteTask struct {
 }
 
 func main() {
-	go func() {
-		http.ListenAndServe("localhost:10000", nil)
-	}()
+	//go func() {
+	//	http.ListenAndServe("localhost:10000", nil)
+	//}()
 	runMode := flag.String("name", "checkall", "run mode")
 	blockHeight := flag.Int("blockHeight", 0, "run mode")
 	chainDir := flag.String("chainPath", "./Chain/ontology", "chain path")
@@ -350,14 +350,14 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 
 	var wg = new(sync.WaitGroup)
 
-	wg.Add(12)
+	wg.Add(8)
 
 	ch := make(chan Task, 100)
-	for i:=uint32(0);i<9;i++ {
+	for i:=uint32(0);i<4;i++ {
 		go readAndExecuteFile(i, currentBlockHeight, ledgerStore, wg, ch)
 	}
 
-	for i:=0;i<3;i++ {
+	for i:=0;i<4;i++ {
 		go handleExecuteInfo(ch, ledgerStore, wg)
 	}
 
