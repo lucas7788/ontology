@@ -350,14 +350,14 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 
 	var wg = new(sync.WaitGroup)
 
-	wg.Add(8)
+	wg.Add(12)
 
 	ch := make(chan Task, 100)
-	for i:=uint32(0);i<4;i++ {
+	for i:=uint32(0);i<9;i++ {
 		go readAndExecuteFile(i, currentBlockHeight, ledgerStore, wg, ch)
 	}
 
-	for i:=0;i<4;i++ {
+	for i:=0;i<3;i++ {
 		go handleExecuteInfo(ch, ledgerStore, wg)
 	}
 
@@ -411,6 +411,8 @@ func readAndExecuteFile(offset uint32,currentBlockHeight uint32,ledgerStore *led
 }
 
 func handleExecuteInfo(ch <-chan Task, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
+	defer wg.Done()
+	count := 0
 	for {
 		task, ok := <-ch
 		if !ok {
@@ -419,8 +421,11 @@ func handleExecuteInfo(ch <-chan Task, ledgerStore *ledgerstore.LedgerStoreImp, 
 		}
 		switch t := task.(type) {
 		case *FinishedTask:
-			wg.Done()
-			return
+			if count == 2 {
+				return
+			} else {
+				count++
+			}
 		case *ExecuteTask:
 			execute(t.executeInfo, ledgerStore)
 		}
