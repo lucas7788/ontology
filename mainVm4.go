@@ -62,7 +62,7 @@ func main() {
 	//}()
 	runMode := flag.String("name", "checkall", "run mode")
 	blockHeight := flag.Int("blockHeight", 0, "run mode")
-	chainDir := flag.String("chain-path", "./Chain/ontology", "chain path")
+	chainDir := flag.String("chainPath", "./Chain/ontology", "chain path")
 
 	flag.Parse()
 	if *runMode == "checkone" {
@@ -348,8 +348,6 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 	}
 	fmt.Println("currentBlockHeight:", currentBlockHeight)
 
-	//one goruntine read
-	fmt.Println("start: ", start)
 	var wg = new(sync.WaitGroup)
 
 	wg.Add(9)
@@ -363,8 +361,9 @@ func checkAllBlock(startHeight uint32, chainDir string) {
 	fmt.Println("checkAllBlock Current BlockHeight: ", currentBlockHeight)
 	fmt.Println("start: ", start)
 	fmt.Println("end: ", time.Now())
+	return
 }
-func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) error {
+func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
 	defer wg.Done()
 	fileName := fmt.Sprintf("readWriteSetAndBlock%d.txt", offset)
 	var f *os.File
@@ -373,7 +372,7 @@ func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.L
 	defer f.Close()
 	if err != nil {
 		log.Errorf("OpenFile err: %s\n", err)
-		return fmt.Errorf("OpenFile err: %s\n", err)
+		return
 	}
 
 	reader := bufio.NewReader(f)
@@ -382,24 +381,24 @@ func readFile(offset uint32,currentBlockHeight uint32,ledgerStore *ledgerstore.L
 	reader.Read(key)
 	currentBlockHeight = binary.LittleEndian.Uint32(key)
 
-    fmt.Printf("startHeight: %d, endHeight: %d\n", offset*500000, currentBlockHeight)
+    log.Errorf("startHeight: %d, endHeight: %d\n", offset*500000, currentBlockHeight)
 
 	for i:=offset*500000; i<currentBlockHeight;i++  {
 		dataBytes, err := serialization.ReadVarBytes(reader)
 		if err != nil || io.EOF == err {
 
 			fmt.Printf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
-			return fmt.Errorf("ReadString err: %s, height: %d, offset: %d\n", err, i, reader.Size())
+			return
 		}
 		executeInfo, err := getExecuteInfoByHeight(dataBytes)
 		if err != nil {
-			fmt.Println("err:", err)
-			return err
+			fmt.Println("getExecuteInfoByHeight err:", err)
+			return
 		}
 		execute(executeInfo, ledgerStore)
 	}
-	fmt.Printf("readFile finished, offset: %d\n", offset)
-	return nil
+	log.Errorf("readFile finished, offset: %d\n", offset)
+	return
 }
 
 func handleExecuteInfo(ch <-chan Task, ledgerStore *ledgerstore.LedgerStoreImp, wg *sync.WaitGroup) {
@@ -499,9 +498,9 @@ func execute(executeInfo *ExecuteInfo, ledgerStore *ledgerstore.LedgerStoreImp) 
 	if executeInfo.Height % 100000 == 0 {
 		fmt.Println("execute blockHeight: ", executeInfo.Height)
 	}
-	if executeInfo.Height %1000000 == 0 {
-		fmt.Println("time: ", time.Now())
-	}
+	//if executeInfo.Height %1000000 == 0 {
+	//	fmt.Println("time: ", time.Now())
+	//}
 
 	//fmt.Fprintf(os.Stderr, "diff hash at height:%d, hash:%x\n", block.Header.Height, writeSet.Hash())
 	//
