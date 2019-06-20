@@ -49,6 +49,31 @@ type RawHeader struct {
 	hash *common.Uint256
 }
 
+func (this *RawHeader) GetHeader() (*Header, error) {
+	bookkeepers := make([]keypair.PublicKey, 0)
+	for _, bk := range this.Bookkeepers {
+		pk, err := keypair.DeserializePublicKey(bk)
+		if err != nil {
+			return nil, err
+		}
+		bookkeepers = append(bookkeepers, pk)
+	}
+	return &Header{
+		Version:          this.Version,
+		PrevBlockHash:    this.PrevBlockHash,
+		TransactionsRoot: this.TransactionsRoot,
+		BlockRoot:        this.BlockRoot,
+		Timestamp:        this.Timestamp,
+		Height:           this.Height,
+		ConsensusData:    this.ConsensusData,
+		ConsensusPayload: this.ConsensusPayload,
+		NextBookkeeper:   this.NextBookkeeper,
+
+		//Program *program.Program
+		Bookkeepers: bookkeepers,
+	}, nil
+}
+
 func (bd *RawHeader) GetTrustedHeader() *RawTrustedHeader {
 	sink := common.NewZeroCopySink(nil)
 	bd.Serialization(sink)
@@ -57,8 +82,8 @@ func (bd *RawHeader) GetTrustedHeader() *RawTrustedHeader {
 		Payload: sink.Bytes(),
 	}
 }
-// note: can only be called when source is trusted, like data from local ledger store
 
+// note: can only be called when source is trusted, like data from local ledger store
 
 func (bd *RawHeader) Serialization(sink *common.ZeroCopySink) error {
 	_, err := bd.SerializeExt(sink)
@@ -175,6 +200,27 @@ func (bd *RawHeader) Hash() common.Uint256 {
 
 	bd.hash = &hash
 	return hash
+}
+
+func (this *Header) GetRawHeader() *RawHeader {
+	bookkeepers := make([][]byte, 0)
+	for bk := range this.Bookkeepers {
+		bookkeepers = append(bookkeepers, keypair.SerializePublicKey(bk))
+	}
+	return &RawHeader{
+		Version:          this.Version,
+		PrevBlockHash:    this.PrevBlockHash,
+		TransactionsRoot: this.TransactionsRoot,
+		BlockRoot:        this.BlockRoot,
+		Timestamp:        this.Timestamp,
+		Height:           this.Height,
+		ConsensusData:    this.ConsensusData,
+		ConsensusPayload: this.ConsensusPayload,
+		NextBookkeeper:   this.NextBookkeeper,
+
+		//Program *program.Program
+		Bookkeepers: bookkeepers,
+	}
 }
 
 type Header struct {

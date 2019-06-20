@@ -26,7 +26,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/p2pserver/common"
 	conn "github.com/ontio/ontology/p2pserver/link"
@@ -196,13 +195,6 @@ func (this *Peer) GetPort() uint16 {
 	return this.Link.GetPort()
 }
 
-//SendTo call sync link to send buffer
-func (this *Peer) SendRaw(msgType string, msgPayload []byte) error {
-	if this.Link != nil && this.Link.Valid() {
-		return this.Link.SendRaw(msgPayload)
-	}
-	return errors.New("[p2p]sync link invalid")
-}
 
 //Close halt sync connection
 func (this *Peer) Close() {
@@ -273,10 +265,7 @@ func (this *Peer) AttachChan(msgchan chan *types.MsgPayload) {
 
 //Send transfer buffer by sync or cons link
 func (this *Peer) Send(msg types.Message) error {
-	sink := comm.NewZeroCopySink(nil)
-	types.WriteMessage(sink, msg)
-
-	return this.SendRaw(msg.CmdType(), sink.Bytes())
+	return this.Link.Tx(msg)
 }
 
 //SetHttpInfoState set peer`s httpinfo state

@@ -228,13 +228,8 @@ func (this *BlockStore) loadHeader(blockHash common.Uint256) (*types.Header, err
 	if err != nil {
 		return nil, err
 	}
-	source := common.NewZeroCopySource(rawHeader.Payload)
-	header := new(types.Header)
-	err = header.Deserialization(source)
-	if err != nil {
-		return nil, err
-	}
-	return header, nil
+
+	return rawHeader.GetHeader()
 }
 
 func (this *BlockStore) loadRawHeader(blockHash common.Uint256) (*types.RawHeader, error) {
