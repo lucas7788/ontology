@@ -76,8 +76,16 @@ func InitConfig(t *testing.T, shardID common.ShardID) {
 	cfg.Genesis.VBFT.Peers[5].PeerPubkey = hex.EncodeToString(keypair.SerializePublicKey(GetAccount(shardName + "_peerOwner5").PublicKey))
 	cfg.Genesis.VBFT.Peers[6].PeerPubkey = hex.EncodeToString(keypair.SerializePublicKey(GetAccount(shardName + "_peerOwner6").PublicKey))
 
-	cfg.Genesis.VBFT.BlockMsgDelay = 3000
-	cfg.Genesis.VBFT.HashMsgDelay = 3000
+	cfg.Genesis.VBFT.Peers[0].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[1].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[2].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[3].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[4].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[5].InitPos = 30000
+	cfg.Genesis.VBFT.Peers[6].InitPos = 30000
+
+	cfg.Genesis.VBFT.BlockMsgDelay = 5000
+	cfg.Genesis.VBFT.HashMsgDelay = 5000
 
 	TestConfigs[shardID] = cfg
 }

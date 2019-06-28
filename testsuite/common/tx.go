@@ -34,6 +34,19 @@ import (
 
 func CreateAdminTx(t *testing.T, shard common.ShardID, addr common.Address, method string, args []byte) *types.Transaction {
 	mutable := utils.BuildNativeTransaction(addr, method, args)
+
+	return buildTxWithMultiSig(t, shard, mutable)
+}
+func CreateAdminTx2(t *testing.T, shard common.ShardID, addr common.Address, method string, args []interface{}) *types.Transaction {
+	param, err := utils.BuildNativeInvokeCode(addr, 0,method, args)
+	if err != nil {
+		t.Fatalf("Invalid args: %s", err)
+	}
+	mutable := utils.NewInvokeTransaction(param)
+	return buildTxWithMultiSig(t, shard, mutable)
+}
+
+func buildTxWithMultiSig(t *testing.T,shard common.ShardID, mutable *types.MutableTransaction) *types.Transaction {
 	mutable.GasPrice = 0
 	mutable.GasLimit = 20000
 	mutable.Nonce = 123456
@@ -57,7 +70,6 @@ func CreateAdminTx(t *testing.T, shard common.ShardID, addr common.Address, meth
 	if err != nil {
 		t.Fatalf("to immutable tx: %s", err)
 	}
-
 	return tx
 }
 
@@ -68,6 +80,40 @@ func CreateNativeTx(t *testing.T, user string, addr common.Address, method strin
 	}
 
 	mutable := utils.BuildNativeTransaction(addr, method, args)
+
+	return buildTx(t, mutable, acc)
+}
+
+func CreateNativeTx2(t *testing.T, user string, addr common.Address, method string, args []interface{}) *types.Transaction {
+	acc := GetAccount(user)
+	if acc == nil {
+		t.Fatalf("Invalid user: %s", user)
+	}
+
+	param, err := utils.BuildNativeInvokeCode(addr, 0,method, args)
+	if err != nil {
+		t.Fatalf("Invalid args: %s", user)
+	}
+	mutable := utils.NewInvokeTransaction(param)
+
+	return buildTx(t, mutable, acc)
+}
+func CreateNativeTxPre(t *testing.T, user string, addr common.Address, method string, args []interface{}) *types.Transaction {
+	acc := GetAccount(user)
+	if acc == nil {
+		t.Fatalf("Invalid user: %s", user)
+	}
+
+	param, err := utils.BuildNativeInvokeCode(addr, 0,method, args)
+	if err != nil {
+		t.Fatalf("Invalid args: %s", user)
+	}
+	mutable := utils.NewInvokeTransaction(param)
+
+	return buildTx(t, mutable, acc)
+}
+
+func buildTx(t *testing.T, mutable *types.MutableTransaction, acc *account.Account) *types.Transaction {
 	mutable.GasPrice = 0
 	mutable.GasLimit = 20000
 	mutable.Payer = acc.Address
@@ -93,7 +139,6 @@ func CreateNativeTx(t *testing.T, user string, addr common.Address, method strin
 	if err != nil {
 		t.Fatalf("to immutable tx: %s", err)
 	}
-
 	return tx
 }
 
