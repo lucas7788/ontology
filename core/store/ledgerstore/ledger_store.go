@@ -1049,7 +1049,15 @@ func (this *LedgerStoreImp) PreExecuteContract(tx *types.Transaction) (*sstate.P
 	})
 
 	if tx.TxType == types.InvokeNeo || tx.TxType == types.InvokeWasm {
-		invoke := tx.Payload.(*payload.InvokeCode)
+		var invoke *payload.InvokeCode
+		if tx.TxType == types.InvokeWasm {
+			payload := tx.Payload.(*payload.InvokeWasm)
+			sink := common.NewZeroCopySink(nil)
+			payload.Serialization(sink)
+			invoke.Code = sink.Bytes()
+		} else {
+			invoke = tx.Payload.(*payload.InvokeCode)
+		}
 
 		sc := smartcontract.SmartContract{
 			Config:   config,

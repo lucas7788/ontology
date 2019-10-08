@@ -301,7 +301,7 @@ func CallContract(proc *exec.Process, contractAddr uint32, inputPtr uint32, inpu
 		result = tmpRes
 
 	case WASMVM_CONTRACT:
-		conParam := states.WasmContractParam{Address: contractAddress, Args: inputs}
+		conParam := payload.InvokeWasm{Address: contractAddress, Args: inputs}
 		sink := common.NewZeroCopySink(nil)
 		conParam.Serialization(sink)
 

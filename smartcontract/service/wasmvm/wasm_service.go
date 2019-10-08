@@ -26,8 +26,8 @@ import (
 	"github.com/ontio/ontology/errors"
 	"github.com/ontio/ontology/smartcontract/context"
 	"github.com/ontio/ontology/smartcontract/event"
-	"github.com/ontio/ontology/smartcontract/states"
 	"github.com/ontio/ontology/smartcontract/storage"
+	"github.com/ontio/ontology/core/payload"
 )
 
 type WasmVmService struct {
@@ -81,7 +81,7 @@ func (this *WasmVmService) Invoke() (interface{}, error) {
 		return nil, ERR_EXECUTE_CODE
 	}
 
-	contract := &states.WasmContractParam{}
+	contract := &payload.InvokeWasm{}
 	sink := common.NewZeroCopySource(this.Code)
 	err := contract.Deserialization(sink)
 	if err != nil {

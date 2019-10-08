@@ -29,7 +29,6 @@ import (
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/payload"
 	"github.com/ontio/ontology/core/types"
-	"github.com/ontio/ontology/smartcontract/states"
 	vm "github.com/ontio/ontology/vm/neovm"
 )
 
@@ -190,8 +189,8 @@ func BuildNeoVMParam(builder *vm.ParamsBuilder, smartContractParams []interface{
 }
 
 //build param bytes for wasm contract
-func BuildWasmVMInvokeCode(contractAddress common.Address, params []interface{}) ([]byte, error) {
-	contract := &states.WasmContractParam{}
+func BuildWasmVMInvokeCode(contractAddress common.Address, params []interface{}) (*payload.InvokeWasm, error) {
+	contract := &payload.InvokeWasm{}
 	contract.Address = contractAddress
 	//bf := bytes.NewBuffer(nil)
 	argbytes, err := BuildWasmContractParam(params)
@@ -199,9 +198,7 @@ func BuildWasmVMInvokeCode(contractAddress common.Address, params []interface{})
 		return nil, fmt.Errorf("build wasm contract param failed:%s", err)
 	}
 	contract.Args = argbytes
-	sink := common.NewZeroCopySink(nil)
-	contract.Serialization(sink)
-	return sink.Bytes(), nil
+	return contract, nil
 }
 
 //build param bytes for wasm contract
@@ -260,23 +257,20 @@ func BuildWasmContractParam(params []interface{}) ([]byte, error) {
 }
 
 func NewWasmVMInvokeTransaction(gasPrice, gasLimit uint64, contractAddress common.Address, params []interface{}) (*types.MutableTransaction, error) {
-	invokeCode, err := BuildWasmVMInvokeCode(contractAddress, params)
+	invokeWasm, err := BuildWasmVMInvokeCode(contractAddress, params)
 	if err != nil {
 		return nil, err
 	}
-	return NewWasmSmartContractTransaction(gasPrice, gasLimit, invokeCode)
+	return NewWasmSmartContractTransaction(gasPrice, gasLimit, invokeWasm)
 }
 
-func NewWasmSmartContractTransaction(gasPrice, gasLimit uint64, invokeCode []byte) (*types.MutableTransaction, error) {
-	invokePayload := &payload.InvokeCode{
-		Code: invokeCode,
-	}
+func NewWasmSmartContractTransaction(gasPrice, gasLimit uint64, invokeWasm *payload.InvokeWasm) (*types.MutableTransaction, error) {
 	tx := &types.MutableTransaction{
 		GasPrice: gasPrice,
 		GasLimit: gasLimit,
 		TxType:   types.InvokeWasm,
 		Nonce:    uint32(time.Now().Unix()),
-		Payload:  invokePayload,
+		Payload:  invokeWasm,
 		Sigs:     nil,
 	}
 	return tx, nil

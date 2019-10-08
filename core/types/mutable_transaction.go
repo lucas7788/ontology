@@ -120,6 +120,11 @@ func (tx *MutableTransaction) serializeUnsigned(sink *common.ZeroCopySink) error
 		if err != nil {
 			return err
 		}
+	case *payload.InvokeWasm:
+		err := pl.Serialization(sink)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("wrong transaction payload type")
 	}
@@ -156,8 +161,10 @@ func (tx *MutableTransaction) DeserializeUnsigned(r io.Reader) error {
 	}
 
 	switch tx.TxType {
-	case InvokeNeo, InvokeWasm:
+	case InvokeNeo:
 		tx.Payload = new(payload.InvokeCode)
+	case InvokeWasm:
+		tx.Payload = new(payload.InvokeWasm)
 	case Deploy:
 		tx.Payload = new(payload.DeployCode)
 	default:

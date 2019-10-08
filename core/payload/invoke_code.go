@@ -65,3 +65,38 @@ func (self *InvokeCode) Serialization(sink *common.ZeroCopySink) error {
 	sink.WriteVarBytes(self.Code)
 	return nil
 }
+
+
+type InvokeWasm struct {
+	Address common.Address
+	Args    []byte
+}
+
+func (this *InvokeWasm) Serialize(w io.Writer) error {
+	return nil
+}
+
+func (this *InvokeWasm) Deserialize(r io.Reader) error {
+	return nil
+}
+
+func (this *InvokeWasm) Serialization(sink *common.ZeroCopySink) error {
+	sink.WriteAddress(this.Address)
+	sink.WriteVarBytes([]byte(this.Args))
+	return nil
+}
+
+// `ContractInvokeParam.Args` has reference of `source`
+func (this *InvokeWasm) Deserialization(source *common.ZeroCopySource) error {
+	var irregular, eof bool
+	this.Address, eof = source.NextAddress()
+
+	this.Args, _, irregular, eof = source.NextVarBytes()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}

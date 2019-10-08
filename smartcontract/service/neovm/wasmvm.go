@@ -70,8 +70,9 @@ func WASMInvoke(service *NeoVmService, engine *vm.Executor) error {
 	if err != nil {
 		return err
 	}
-
-	newservice, err := service.ContextRef.NewExecuteEngine(inputs, types.InvokeWasm)
+	sink := common.NewZeroCopySink(nil)
+	inputs.Serialization(sink)
+	newservice, err := service.ContextRef.NewExecuteEngine(sink.Bytes(), types.InvokeWasm)
 	if err != nil {
 		return err
 	}
