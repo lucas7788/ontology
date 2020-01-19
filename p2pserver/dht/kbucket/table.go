@@ -2,10 +2,10 @@
 package kbucket
 
 import (
-	// "encoding/binary"
+	"encoding/binary"
 	"errors"
 	"fmt"
-	// "math/rand"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -74,6 +74,31 @@ func (rt *RoutingTable) GetTrackedCplsForRefresh() []CplRefresh {
 	}
 
 	return cpls
+}
+
+// GenRandPeerID generates a random peerID for a given Cpl
+func (rt *RoutingTable) GenRandPeerID(targetCpl uint) (uint64, error) {
+	if targetCpl > maxCplForRefresh {
+		return 0, fmt.Errorf("cannot generate peer ID for Cpl greater than %d", maxCplForRefresh)
+	}
+
+	localPrefix := binary.BigEndian.Uint16(rt.local)
+
+	// For host with ID `L`, an ID `K` belongs to a bucket with ID `B` ONLY IF CommonPrefixLen(L,K) is EXACTLY B.
+	// Hence, to achieve a targetPrefix `T`, we must toggle the (T+1)th bit in L & then copy (T+1) bits from L
+	// to our randomly generated prefix.
+	toggledLocalPrefix := localPrefix ^ (uint16(0x8000) >> targetCpl)
+	randPrefix := uint16(rand.Uint32())
+
+	// Combine the toggled local prefix and the random bits at the correct offset
+	// such that ONLY the first `targetCpl` bits match the local ID.
+	mask := (^uint16(0)) << (16 - (targetCpl + 1))
+	targetPrefix := (toggledLocalPrefix & mask) | (randPrefix & ^mask)
+
+	// Convert to a known peer ID.
+	key := keyPrefixMap[targetPrefix]
+
+	return uint64(key), nil
 }
 
 // ResetCplRefreshedAtForID resets the refresh time for the Cpl of the given ID.
