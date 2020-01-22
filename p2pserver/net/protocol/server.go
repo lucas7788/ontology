@@ -64,4 +64,7 @@ type P2P interface {
 	SetOwnAddress(addr string)
 	IsOwnAddress(addr string) bool
 	IsAddrFromConnecting(addr string) bool
+
+	UpdateDHT(id uint64) bool
+	RemoveDHT(id uint64) bool
 }

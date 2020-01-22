@@ -296,8 +296,9 @@ func (this *P2PServer) connectSeeds() {
 
 	if len(seedConnList) > 0 {
 		rand.Seed(time.Now().UnixNano())
-		index := rand.Intn(len(seedConnList))
-		this.reqNbrList(seedConnList[index])
+		// close NewAddrReq
+		// index := rand.Intn(len(seedConnList))
+		// this.reqNbrList(seedConnList[index])
 		if isSeed && len(seedDisconn) > 0 {
 			index := rand.Intn(len(seedDisconn))
 			go this.network.Connect(seedDisconn[index])

@@ -89,11 +89,64 @@ func AddrReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, ar
 
 	msg := msgpack.NewAddrs(addrStr)
 	err := p2p.Send(remotePeer, msg)
+
 	if err != nil {
 		log.Warn(err)
 		return
 	}
 }
+
+
+// FindNodeHandle handles the neighbor address request from peer
+func FindNodeHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args ...interface{}) {
+	log.Trace("[p2p dht]receive find node request message", data.Addr, data.Id)
+	// TODO: need p2p.FindNearst
+	// remotePeer := p2p.GetPeer(data.Id)
+	// if remotePeer == nil {
+	// 	log.Debug("[p2p]remotePeer invalid in AddrReqHandle")
+	// 	return
+	// }
+
+	// addrStr := p2p.GetNeighborAddrs()
+	// //check mask peers
+	// mskPeers := config.DefConfig.P2PNode.ReservedCfg.MaskPeers
+	// if config.DefConfig.P2PNode.ReservedPeersOnly && len(mskPeers) > 0 {
+	// 	mskPeerMap := make(map[string]bool)
+	// 	for _, mskAddr := range mskPeers {
+	// 		mskPeerMap[mskAddr] = true
+	// 	}
+
+	// 	// get remote peer IP
+	// 	// if get remotePeerAddr failed, do masking anyway
+	// 	remoteAddr, _ := remotePeer.GetAddr16()
+	// 	var remoteIp net.IP = remoteAddr[:]
+
+	// 	// remove msk peers from neigh-addr-list
+	// 	// if remotePeer is in msk-list, skip masking
+	// 	if _, isMskPeer := mskPeerMap[remoteIp.String()]; !isMskPeer {
+	// 		mskAddrList := make([]msgCommon.PeerAddr, 0)
+	// 		for _, addr := range addrStr {
+	// 			var ip net.IP
+	// 			ip = addr.IpAddr[:]
+	// 			address := ip.To16().String()
+	// 			if _, present := mskPeerMap[address]; !present {
+	// 				mskAddrList = append(mskAddrList, addr)
+	// 			}
+	// 		}
+	// 		// replace with mskAddrList
+	// 		addrStr = mskAddrList
+	// 	}
+	// }
+
+	// msg := msgpack.NewAddrs(addrStr)
+	// err := p2p.Send(remotePeer, msg)
+
+	// if err != nil {
+	// 	log.Warn(err)
+	// 	return
+	// }
+}
+
 
 // HeaderReqHandle handles the header sync req from peer
 func HeadersReqHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args ...interface{}) {
@@ -376,6 +429,8 @@ func VerAckHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, arg
 	}
 
 	remotePeer.SetState(msgCommon.ESTABLISH)
+	p2p.UpdateDHT(data.Id)
+
 	p2p.RemoveFromConnectingList(data.Addr)
 	remotePeer.DumpInfo()
 
@@ -384,9 +439,9 @@ func VerAckHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, arg
 		p2p.Send(remotePeer, msg)
 	}
 
-	msg := msgpack.NewAddrReq()
-	go p2p.Send(remotePeer, msg)
-
+	// using dht, so no full mesh request
+	// msg := msgpack.NewAddrReq()
+	// go p2p.Send(remotePeer, msg)
 }
 
 // AddrHandle handles the neighbor address response message from peer
@@ -602,6 +657,7 @@ func DisconnectHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID,
 		p2p.RemovePeerAddress(data.Addr)
 		remotePeer.Close()
 	}
+	p2p.RemoveDHT(data.Id)
 }
 
 //get blk hdrs from starthash to stophash

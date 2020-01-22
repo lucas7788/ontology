@@ -19,6 +19,7 @@
 package netserver
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"net"
@@ -31,6 +32,7 @@ import (
 	"github.com/ontio/ontology/core/ledger"
 	"github.com/ontio/ontology/p2pserver/common"
 	"github.com/ontio/ontology/p2pserver/common/set"
+	"github.com/ontio/ontology/p2pserver/dht"
 	"github.com/ontio/ontology/p2pserver/message/msg_pack"
 	"github.com/ontio/ontology/p2pserver/message/types"
 	"github.com/ontio/ontology/p2pserver/net/protocol"
@@ -61,6 +63,8 @@ type NetServer struct {
 	inConnRecord  InConnectionRecord
 	outConnRecord OutConnectionRecord
 	OwnAddress    string //network`s own address(ip : sync port),which get from version check
+
+	dht *dht.DHT
 }
 
 //InConnectionRecord include all addr connected
@@ -118,6 +122,12 @@ func (this *NetServer) init() error {
 	this.connectingNodes.ConnectingAddrs = set.NewStringSet()
 	this.inConnRecord.InConnectingAddrs = set.NewStringSet()
 	this.outConnRecord.OutConnectingAddrs = set.NewStringSet()
+
+	dtable, err := dht.New(context.Background(), id)
+	if err != nil {
+		panic("fail to create dht")
+	}
+	this.dht = dtable
 
 	return nil
 }
@@ -627,4 +637,18 @@ func (this *NetServer) SetOwnAddress(addr string) {
 		log.Infof("[p2p]set own address %s", addr)
 		this.OwnAddress = addr
 	}
+}
+
+func (ns *NetServer) UpdateDHT(id uint64) bool {
+	ns.dht.Update(id)
+	return true
+}
+
+func (ns *NetServer) RemoveDHT(id uint64) bool {
+	ns.dht.Remove(id)
+	return true
+}
+
+func (ns *NetServer) BetterPeers(id uint64, count int) []uint64 {
+	return ns.dht.BetterPeers(id, count)
 }
