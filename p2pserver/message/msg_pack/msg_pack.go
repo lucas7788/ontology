@@ -206,3 +206,11 @@ func NewConsensusDataReq(hash common.Uint256) mt.Message {
 
 	return &dataReq
 }
+
+func NewFindNodeReq(id uint64) mt.Message {
+	req := mt.FindNodeReq{
+		TargetID: id,
+	}
+
+	return &req
+}

@@ -69,6 +69,9 @@ func (this *MessageRouter) init(p2p p2p.P2P) {
 	this.RegisterMsgHandler(msgCommon.NOT_FOUND_TYPE, NotFoundHandle)
 	this.RegisterMsgHandler(msgCommon.TX_TYPE, TransactionHandle)
 	this.RegisterMsgHandler(msgCommon.DISCONNECT_TYPE, DisconnectHandle)
+
+	this.RegisterMsgHandler(msgCommon.FINDNODE_TYPE, FindNodeHandle)
+	this.RegisterMsgHandler(msgCommon.FINDNODE_RESP_TYPE, FindNodeResponseHandle)
 }
 
 // RegisterMsgHandler registers msg handler with the msg type

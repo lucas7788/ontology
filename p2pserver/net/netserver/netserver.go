@@ -129,6 +129,8 @@ func (this *NetServer) init() error {
 	}
 	this.dht = dtable
 
+	this.doRefresh()
+
 	return nil
 }
 
@@ -651,4 +653,54 @@ func (ns *NetServer) RemoveDHT(id uint64) bool {
 
 func (ns *NetServer) BetterPeers(id uint64, count int) []uint64 {
 	return ns.dht.BetterPeers(id, count)
+}
+
+func (ns *NetServer) GetPeerStringAddr() map[uint64]string {
+	return ns.Np.GetPeerStringAddr()
+}
+
+func (ns *NetServer) findSelf() {
+	tick := time.NewTicker(ns.dht.RtRefreshPeriod)
+	defer tick.Stop()
+
+	for {
+		select {
+		case <-tick.C:
+			log.Debug("[dht] start to find myself")
+			closer := ns.dht.BetterPeers(ns.GetID(), dht.AlphaValue)
+			for _, pid := range closer {
+				log.Debugf("[dht] find closr peer %d", pid)
+				ns.Send(ns.GetPeer(pid), msgpack.NewFindNodeReq(ns.GetID()))
+			}
+		}
+	}
+}
+
+func (ns *NetServer) refreshCPL() {
+	tick := time.NewTicker(ns.dht.RtRefreshPeriod)
+	defer tick.Stop()
+	for {
+		select {
+		case <-tick.C:
+			for curCPL := range ns.dht.RoutingTable().Buckets {
+				log.Debugf("[dht] start to refresh bucket: %d", curCPL)
+				randPeer, err := ns.dht.RoutingTable().GenRandPeerID(uint(curCPL))
+				if err != nil {
+					log.Errorf("failed to generate peerID for cpl %d, err: %s", curCPL, err)
+					continue
+				}
+
+				closer := ns.dht.BetterPeers(randPeer, dht.AlphaValue)
+				for _, pid := range closer {
+					log.Debugf("[dht] find closr peer %d", pid)
+					ns.Send(ns.GetPeer(pid), msgpack.NewFindNodeReq(randPeer))
+				}
+			}
+		}
+	}
+}
+
+func (ns *NetServer) doRefresh() {
+	go ns.findSelf()
+	go ns.refreshCPL()
 }

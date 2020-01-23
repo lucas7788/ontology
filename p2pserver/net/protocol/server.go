@@ -67,4 +67,7 @@ type P2P interface {
 
 	UpdateDHT(id uint64) bool
 	RemoveDHT(id uint64) bool
+	BetterPeers(id uint64, count int) []uint64
+
+	GetPeerStringAddr() map[uint64]string
 }

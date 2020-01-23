@@ -26,6 +26,9 @@ type DHT struct {
 	bucketSize   int
 	routingTable *kb.RoutingTable // Array of routing tables for differently distanced nodes
 
+	AutoRefresh           bool
+	RtRefreshQueryTimeout time.Duration
+	RtRefreshPeriod       time.Duration
 }
 
 // Context return dht's context
@@ -41,6 +44,8 @@ func (dht *DHT) RoutingTable() *kb.RoutingTable {
 // New creates a new DHT with the specified host and options.
 func New(ctx context.Context, localID uint64) (*DHT, error) {
 	dht := makeDHT(ctx, localID, KValue)
+	dht.RtRefreshPeriod = 10 * time.Second
+	dht.RtRefreshQueryTimeout = 10 * time.Second
 
 	return dht, nil
 }
@@ -63,6 +68,8 @@ func makeDHT(ctx context.Context, localID uint64, bucketSize int) *DHT {
 		birth:        time.Now(),
 		routingTable: rt,
 		bucketSize:   bucketSize,
+
+		AutoRefresh: true,
 	}
 
 	return dht
@@ -91,6 +98,7 @@ func (dht *DHT) BetterPeers(id uint64, count int) []uint64 {
 		if curID == id {
 			continue
 		}
+		filtered = append(filtered, curID)
 	}
 
 	return filtered
