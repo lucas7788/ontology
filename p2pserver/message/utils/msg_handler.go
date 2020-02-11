@@ -139,6 +139,7 @@ func FindNodeHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, a
 	freq := data.Payload.(*msgTypes.FindNodeReq)
 	var fresp msgTypes.FindNodeResp
 	// check the target is my self
+	log.Debugf("[dht] find node for peerid: %d", freq.TargetID)
 	if freq.TargetID == p2p.GetID() {
 		fresp.Success = true
 		fresp.TargetID = freq.TargetID
