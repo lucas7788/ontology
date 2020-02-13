@@ -149,6 +149,8 @@ func (rt *RoutingTable) Update(p uint64) error {
 		// If the peer is already in the table, move it to the front.
 		// This signifies that it it "more active" and the less active nodes
 		// Will as a result tend towards the back of the list
+
+		// the paper put more active node at tail, we put more active node at head
 		bucket.MoveToFront(p)
 		return nil
 	}

@@ -260,7 +260,7 @@ func TestTableFindMultiple(t *testing.T) {
 		rt.Update(peers[i])
 	}
 
-	// 都放在一个桶里
+	// put in one bucket
 	t.Logf("Searching for peer: '%d'", peers[2])
 	found := rt.NearestPeers(ConvertPeerID(peers[2]), 15)
 	if len(found) != 15 {

@@ -55,7 +55,7 @@ func (id ID) less(other ID) bool {
 	return a.Less(b)
 }
 
-// CommonPrefixLen calculate cpl
+// CommonPrefixLen(cpl) calculate two ID's xor prefix 0
 func CommonPrefixLen(a, b ID) int {
 	return ks.ZeroPrefixLen(ks.XOR(a, b))
 }

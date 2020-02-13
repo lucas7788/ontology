@@ -25,7 +25,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	// mh "github.com/multiformats/go-multihash"
 )
 
 const bits = 16
@@ -48,6 +47,7 @@ func main() {
 		out = hasher.Sum(out[:0])
 		hasher.Reset()
 
+		// hash value prefix
 		prefix := binary.BigEndian.Uint32(out) >> (32 - bits)
 		if !found[prefix] {
 			found[prefix] = true
