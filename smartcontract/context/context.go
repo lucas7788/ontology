@@ -42,6 +42,7 @@ type ContextRef interface {
 	CheckUseGas(gas uint64) bool
 	CheckExecStep() bool
 	GetCallerAddress() []common.Address
+	PutCrossStateHashes(hashes []common.Uint256)
 }
 
 type Engine interface {
