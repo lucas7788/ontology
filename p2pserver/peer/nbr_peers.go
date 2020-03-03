@@ -204,6 +204,5 @@ func (nbp *NbrPeers) GetPeerStringAddr() map[uint64]string {
 		ret[tn.GetID()] = addrString
 	}
 
-
 	return ret
 }
