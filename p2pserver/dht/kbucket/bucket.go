@@ -19,6 +19,7 @@
 package kbucket
 
 import (
+	"bytes"
 	"container/list"
 	"sync"
 )
@@ -29,57 +30,64 @@ type Bucket struct {
 	list *list.List
 }
 
+type KPId struct {
+	KId KadId
+	PId uint64
+}
+
 func newBucket() *Bucket {
 	b := new(Bucket)
 	b.list = list.New()
 	return b
 }
 
-func (b *Bucket) Peers() []uint64 {
+func (b *Bucket) Peers() []*KPId {
 	b.lk.RLock()
 	defer b.lk.RUnlock()
-	ps := make([]uint64, 0, b.list.Len())
+	ps := make([]*KPId, 0, b.list.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		id := e.Value.(uint64)
+		id := e.Value.(*KPId)
 		ps = append(ps, id)
 	}
 	return ps
 }
 
-func (b *Bucket) Has(id uint64) bool {
+func (b *Bucket) Has(id KadId) bool {
 	b.lk.RLock()
 	defer b.lk.RUnlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(uint64) == id {
+		curr := e.Value.(*KPId)
+		if bytes.Compare(curr.KId[:], id[:]) == 0 {
 			return true
 		}
 	}
 	return false
 }
 
-func (b *Bucket) Remove(id uint64) bool {
+func (b *Bucket) Remove(id KadId) bool {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(uint64) == id {
-			b.list.Remove(e)
+		curr := e.Value.(*KPId)
+		if bytes.Compare(curr.KId[:], id[:]) == 0 {
 			return true
 		}
 	}
 	return false
 }
 
-func (b *Bucket) MoveToFront(id uint64) {
+func (b *Bucket) MoveToFront(id *KPId) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		if e.Value.(uint64) == id {
+		curr := e.Value.(*KPId)
+		if bytes.Compare(curr.KId[:], id.KId[:]) == 0 {
 			b.list.MoveToFront(e)
 		}
 	}
 }
 
-func (b *Bucket) PushFront(p uint64) {
+func (b *Bucket) PushFront(p *KPId) {
 	b.lk.Lock()
 	b.list.PushFront(p)
 	b.lk.Unlock()
@@ -103,7 +111,7 @@ func (b *Bucket) Len() int {
 // peers with CPL equal to cpl, the returned bucket will have peers with CPL
 // greater than cpl (returned bucket has closer peers)
 // CPL ==> CommonPrefixLen
-func (b *Bucket) Split(cpl int, target ID) *Bucket {
+func (b *Bucket) Split(cpl int, target KadId) *Bucket {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
@@ -112,8 +120,8 @@ func (b *Bucket) Split(cpl int, target ID) *Bucket {
 	newbuck.list = out
 	e := b.list.Front()
 	for e != nil {
-		peerID := ConvertPeerID(e.Value.(uint64))
-		peerCPL := CommonPrefixLen(peerID, target)
+		peerID := e.Value.(*KPId)
+		peerCPL := CommonPrefixLen(peerID.KId, target)
 		if peerCPL > cpl {
 			cur := e
 			out.PushBack(e.Value)

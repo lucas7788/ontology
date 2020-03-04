@@ -35,8 +35,10 @@ var KValue = 20
 // Alpha is the concurrency factor for asynchronous requests.
 var AlphaValue = 3
 
+var KID_PID = make(map[string]uint64) //kid -> pid
+
 type DHT struct {
-	self  uint64
+	self  *kb.KadKeyId
 	birth time.Time // When this peer started up
 
 	ctx context.Context
@@ -60,28 +62,28 @@ func (dht *DHT) RoutingTable() *kb.RoutingTable {
 }
 
 // New creates a new DHT with the specified host and options.
-func New(ctx context.Context, localID uint64) (*DHT, error) {
-	dht := makeDHT(ctx, localID, KValue)
+func New(ctx context.Context) (*DHT, error) {
+	dht := makeDHT(ctx, KValue)
 	dht.RtRefreshPeriod = 10 * time.Second
 	dht.RtRefreshQueryTimeout = 10 * time.Second
 
 	return dht, nil
 }
 
-func makeDHT(ctx context.Context, localID uint64, bucketSize int) *DHT {
-	self := kb.ConvertPeerID(localID)
+func makeDHT(ctx context.Context, bucketSize int) *DHT {
+	self := kb.GenerateRandomId()
 	rt := kb.NewRoutingTable(bucketSize, self)
 
-	rt.PeerAdded = func(p uint64) {
+	rt.PeerAdded = func(p kb.KadId) {
 		log.Debugf("dht: peer: %d added to dht", p)
 	}
 
-	rt.PeerRemoved = func(p uint64) {
+	rt.PeerRemoved = func(p kb.KadId) {
 		log.Debugf("dht: peer: %d removed from dht", p)
 	}
 
 	dht := &DHT{
-		self:         localID,
+		self:         self,
 		ctx:          ctx,
 		birth:        time.Now(),
 		routingTable: rt,
@@ -95,25 +97,29 @@ func makeDHT(ctx context.Context, localID uint64, bucketSize int) *DHT {
 
 // Update signals the routingTable to Update its last-seen status
 // on the given peer.
-func (dht *DHT) Update(peer uint64) bool {
+func (dht *DHT) Update(peer *kb.KPId) bool {
 	err := dht.routingTable.Update(peer)
 
 	return err == nil
 }
 
-func (dht *DHT) Remove(peer uint64) {
+func (dht *DHT) Remove(peer kb.KadId) {
 	dht.routingTable.Remove(peer)
 }
 
-func (dht *DHT) BetterPeers(id uint64, count int) []uint64 {
-	closer := dht.routingTable.NearestPeers(kb.ConvertPeerID(id), count)
-	filtered := make([]uint64, 0, len(closer))
+func (dht *DHT) GetKadKeyId() *kb.KadKeyId {
+	return dht.self
+}
+
+func (dht *DHT) BetterPeers(id kb.KadId, count int) []*kb.KPId {
+	closer := dht.routingTable.NearestPeers(id, count)
+	filtered := make([]*kb.KPId, 0, len(closer))
 	// don't include self and target id
 	for _, curID := range closer {
-		if curID == dht.self {
+		if curID.KId == dht.self.Id {
 			continue
 		}
-		if curID == id {
+		if curID.KId == id {
 			continue
 		}
 		filtered = append(filtered, curID)

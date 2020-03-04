@@ -27,10 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func genpeerID() uint64 {
-	rand.Seed(time.Now().UnixNano())
-	id := rand.Uint64()
-
+func genpeerID() *KadKeyId {
+	id := GenerateRandomId()
 	return id
 }
 
@@ -40,25 +38,29 @@ func TestBucket(t *testing.T) {
 
 	b := newBucket()
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
 		peers[i] = genpeerID()
-		b.PushFront(peers[i])
+
+		b.PushFront(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 
 	local := genpeerID()
-	localID := ConvertPeerID(local)
+	localID := local
 
 	i := rand.Intn(len(peers))
-	if !b.Has(peers[i]) {
+	if !b.Has(peers[i].Id) {
 		t.Errorf("Failed to find peer: %v", peers[i])
 	}
 
-	spl := b.Split(0, ConvertPeerID(local))
+	spl := b.Split(0, local.Id)
 	llist := b.list
 	for e := llist.Front(); e != nil; e = e.Next() {
-		p := ConvertPeerID(e.Value.(uint64))
-		cpl := CommonPrefixLen(p, localID)
+		p := e.Value.(*KPId)
+		cpl := CommonPrefixLen(p.KId, localID.Id)
 		if cpl > 0 {
 			t.Fatalf("Split failed. found id with cpl > 0 in 0 bucket")
 		}
@@ -66,8 +68,8 @@ func TestBucket(t *testing.T) {
 
 	rlist := spl.list
 	for e := rlist.Front(); e != nil; e = e.Next() {
-		p := ConvertPeerID(e.Value.(uint64))
-		cpl := CommonPrefixLen(p, localID)
+		p := e.Value.(*KPId)
+		cpl := CommonPrefixLen(p.KId, localID.Id)
 		if cpl == 0 {
 			t.Fatalf("Split failed. found id with cpl == 0 in non 0 bucket")
 		}
@@ -78,13 +80,12 @@ func TestRefreshAndGetTrackedCpls(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(1, ConvertPeerID(local))
+	rt := NewRoutingTable(1, local)
 
 	// add cpl's for tracking
 	for cpl := uint(0); cpl < maxCplForRefresh; cpl++ {
-		peerID, err := rt.GenRandPeerID(cpl)
-		require.NoError(t, err)
-		rt.ResetCplRefreshedAtForID(ConvertPeerID(peerID), time.Now())
+		peerID := rt.GenRandKID(cpl)
+		rt.ResetCplRefreshedAtForID(peerID, time.Now())
 	}
 
 	// fetch cpl's
@@ -105,7 +106,7 @@ func TestGenRandPeerID(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(1, ConvertPeerID(local))
+	rt := NewRoutingTable(1, local)
 
 	// generate above maxCplForRefresh fails
 	p, err := rt.GenRandPeerID(maxCplForRefresh + 1)
@@ -115,10 +116,9 @@ func TestGenRandPeerID(t *testing.T) {
 	// test generate rand peer ID
 	for cpl := uint(0); cpl <= maxCplForRefresh; cpl++ {
 		for i := 0; i < 10000; i++ {
-			peerID, err := rt.GenRandPeerID(cpl)
-			require.NoError(t, err)
+			peerID := rt.GenRandKID(1)
 
-			require.True(t, uint(CommonPrefixLen(ConvertPeerID(peerID), rt.local)) == cpl, "failed for cpl=%d", cpl)
+			require.True(t, uint(CommonPrefixLen(peerID, rt.local.Id)) == cpl, "failed for cpl=%d", cpl)
 		}
 	}
 }
@@ -127,41 +127,47 @@ func TestTableCallbacks(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, ConvertPeerID(local))
+	rt := NewRoutingTable(10, local)
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
 		peers[i] = genpeerID()
 	}
 
-	pset := make(map[uint64]struct{})
-	rt.PeerAdded = func(p uint64) {
+	pset := make(map[KadId]struct{})
+	rt.PeerAdded = func(p KadId) {
 		pset[p] = struct{}{}
 	}
-	rt.PeerRemoved = func(p uint64) {
+	rt.PeerRemoved = func(p KadId) {
 		delete(pset, p)
 	}
 
-	rt.Update(peers[0])
-	if _, ok := pset[peers[0]]; !ok {
+	rt.Update(&KPId{
+		KId: peers[0].Id,
+		PId: uint64(0),
+	})
+	if _, ok := pset[peers[0].Id]; !ok {
 		t.Fatal("should have this peer")
 	}
 
-	rt.Remove(peers[0])
-	if _, ok := pset[peers[0]]; ok {
+	rt.Remove(peers[0].Id)
+	if _, ok := pset[peers[0].Id]; ok {
 		t.Fatal("should not have this peer")
 	}
 
 	for _, p := range peers {
-		rt.Update(p)
+		rt.Update(&KPId{
+			KId: p.Id,
+			PId: uint64(9),
+		})
 	}
 
 	out := rt.ListPeers()
 	for _, outp := range out {
-		if _, ok := pset[outp]; !ok {
+		if _, ok := pset[outp.KId]; !ok {
 			t.Fatal("should have peer in the peerset")
 		}
-		delete(pset, outp)
+		delete(pset, outp.KId)
 	}
 
 	if len(pset) > 0 {
@@ -174,21 +180,24 @@ func TestTableUpdate(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, ConvertPeerID(local))
+	rt := NewRoutingTable(10, local)
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
 		peers[i] = genpeerID()
 	}
 
 	// Testing Update
 	for i := 0; i < 10000; i++ {
-		rt.Update(peers[rand.Intn(len(peers))])
+		rt.Update(&KPId{
+			KId: peers[rand.Intn(len(peers))].Id,
+			PId: uint64(i),
+		})
 	}
 
 	for i := 0; i < 100; i++ {
-		id := ConvertPeerID(genpeerID())
-		ret := rt.NearestPeers(id, 5)
+		id := genpeerID()
+		ret := rt.NearestPeers(id.Id, 5)
 		if len(ret) == 0 {
 			t.Fatal("Failed to find node near ID.")
 		}
@@ -199,17 +208,20 @@ func TestTableFind(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, ConvertPeerID(local))
+	rt := NewRoutingTable(10, local)
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 5; i++ {
 		peers[i] = genpeerID()
-		rt.Update(peers[i])
+		rt.Update(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 
 	t.Logf("Searching for peer: '%d'", peers[2])
-	found, _ := rt.NearestPeer(ConvertPeerID(peers[2]))
-	if !(found == peers[2]) {
+	found, _ := rt.NearestPeer(peers[2].Id)
+	if !(found.KId == peers[2].Id) {
 		t.Fatalf("Failed to lookup known node...")
 	}
 }
@@ -218,12 +230,12 @@ func TestTableEldestPreferred(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, ConvertPeerID(local))
+	rt := NewRoutingTable(10, local)
 
 	// generate size + 1 peers to saturate a bucket
-	peers := make([]uint64, 15)
+	peers := make([]*KadKeyId, 15)
 	for i := 0; i < 15; {
-		if p := genpeerID(); CommonPrefixLen(ConvertPeerID(local), ConvertPeerID(p)) == 0 {
+		if p := genpeerID(); CommonPrefixLen(local.Id, p.Id) == 0 {
 			peers[i] = p
 			i++
 		}
@@ -231,14 +243,20 @@ func TestTableEldestPreferred(t *testing.T) {
 
 	// test 10 first peers are accepted.
 	for _, p := range peers[:10] {
-		if err := rt.Update(p); err != nil {
+		if err := rt.Update(&KPId{
+			KId: p.Id,
+			PId: uint64(1),
+		}); err != nil {
 			t.Errorf("expected all 10 peers to be accepted; instead got: %v", err)
 		}
 	}
 
 	// test next 5 peers are rejected.
 	for _, p := range peers[10:] {
-		err := rt.Update(p)
+		err := rt.Update(&KPId{
+			KId: p.Id,
+			PId: uint64(1),
+		})
 		if err != ErrPeerRejectedNoCapacity {
 			t.Errorf("expected extra 5 peers to be rejected; instead got: %v", err)
 		}
@@ -252,23 +270,26 @@ func TestTableFindMultiple(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(20, ConvertPeerID(local))
+	rt := NewRoutingTable(20, local)
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 18; i++ {
 		peers[i] = genpeerID()
-		rt.Update(peers[i])
+		rt.Update(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 
 	// put in one bucket
 	t.Logf("Searching for peer: '%d'", peers[2])
-	found := rt.NearestPeers(ConvertPeerID(peers[2]), 15)
+	found := rt.NearestPeers(peers[2].Id, 15)
 	if len(found) != 15 {
 		t.Fatalf("Got back different number of peers than we expected.")
 	}
 }
 
-func assertSortedPeerIdsEqual(t *testing.T, a, b []uint64) {
+func assertSortedPeerIdsEqual(t *testing.T, a, b []*KPId) {
 	t.Helper()
 	if len(a) != len(b) {
 		t.Fatal("slices aren't the same length")
@@ -284,30 +305,33 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	localID := ConvertPeerID(local)
+	localID := local
 
 	rt := NewRoutingTable(5, localID)
 
-	peers := make([]uint64, 100)
+	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
 		peers[i] = genpeerID()
-		rt.Update(peers[i])
+		rt.Update(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 
-	targetID := ConvertPeerID(peers[2])
+	targetID := peers[2]
 
-	closest := SortClosestPeers(rt.ListPeers(), targetID)
+	closest := SortClosestPeers(rt.ListPeers(), targetID.Id)
 	require.Equal(t, closest[0], peers[2], "first one should be the 0 distance with local")
 
-	targetCpl := CommonPrefixLen(localID, targetID)
+	targetCpl := CommonPrefixLen(localID.Id, targetID.Id)
 
 	// Split the peers into closer, same, and further from the key (than us).
 	var (
-		closer, same, further []uint64
+		closer, same, further []*KPId
 	)
 	var i int
 	for i = 0; i < len(closest); i++ {
-		cpl := CommonPrefixLen(ConvertPeerID(closest[i]), targetID)
+		cpl := CommonPrefixLen(closest[i].KId, targetID.Id)
 		if targetCpl >= cpl {
 			break
 		}
@@ -316,7 +340,7 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 
 	var j int
 	for j = len(closer); j < len(closest); j++ {
-		cpl := CommonPrefixLen(ConvertPeerID(closest[j]), targetID)
+		cpl := CommonPrefixLen(closest[j].KId, targetID.Id)
 		if targetCpl > cpl {
 			break
 		}
@@ -326,7 +350,7 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 
 	// should be able to find at least 30
 	// ~31 (logtwo(100) * 5)
-	found := rt.NearestPeers(targetID, 20)
+	found := rt.NearestPeers(targetID.Id, 20)
 	if len(found) != 20 {
 		t.Fatalf("asked for 20 peers, got %d", len(found))
 	}
@@ -356,12 +380,12 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 		// technically closer.
 
 		// Make sure all remaining peers are _somewhere_ in the "closer" set.
-		pset := set.NewUint64()
+		pset := set.NewStringSet()
 		for _, p := range same {
-			pset.Insert(p)
+			pset.Insert(p.KId.ToHexString())
 		}
 		for _, p := range found {
-			if !pset.Has(p) {
+			if !pset.Has(p.KId.ToHexString()) {
 				t.Fatalf("unexpected peer %d", p)
 			}
 		}
@@ -380,7 +404,7 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 	// order.
 
 	// Ok, now let's try finding all of them.
-	found = rt.NearestPeers(ConvertPeerID(peers[2]), 100)
+	found = rt.NearestPeers(peers[2].Id, 100)
 	if len(found) != rt.Size() {
 		t.Fatalf("asked for %d peers, got %d", rt.Size(), len(found))
 	}
@@ -400,8 +424,8 @@ func TestTableMultithreaded(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	tab := NewRoutingTable(20, ConvertPeerID(local))
-	var peers []uint64
+	tab := NewRoutingTable(20, local)
+	var peers []*KadKeyId
 	for i := 0; i < 500; i++ {
 		peers = append(peers, genpeerID())
 	}
@@ -410,7 +434,10 @@ func TestTableMultithreaded(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			n := rand.Intn(len(peers))
-			tab.Update(peers[n])
+			tab.Update(&KPId{
+				KId: peers[n].Id,
+				PId: uint64(i),
+			})
 		}
 		done <- struct{}{}
 	}()
@@ -418,7 +445,10 @@ func TestTableMultithreaded(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			n := rand.Intn(len(peers))
-			tab.Update(peers[n])
+			tab.Update(&KPId{
+				KId: peers[n].Id,
+				PId: uint64(i),
+			})
 		}
 		done <- struct{}{}
 	}()
@@ -426,7 +456,7 @@ func TestTableMultithreaded(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			n := rand.Intn(len(peers))
-			tab.Find(peers[n])
+			tab.Find(peers[n].Id)
 		}
 		done <- struct{}{}
 	}()
@@ -437,33 +467,39 @@ func TestTableMultithreaded(t *testing.T) {
 
 func BenchmarkUpdates(b *testing.B) {
 	b.StopTimer()
-	local := ConvertPeerID(genpeerID())
+	local := genpeerID()
 	tab := NewRoutingTable(20, local)
 
-	var peers []uint64
+	var peers []*KadKeyId
 	for i := 0; i < b.N; i++ {
 		peers = append(peers, genpeerID())
 	}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tab.Update(peers[i])
+		tab.Update(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 }
 
 func BenchmarkFinds(b *testing.B) {
 	b.StopTimer()
-	local := ConvertPeerID(genpeerID())
+	local := genpeerID()
 	tab := NewRoutingTable(20, local)
 
-	var peers []uint64
+	var peers []*KadKeyId
 	for i := 0; i < b.N; i++ {
 		peers = append(peers, genpeerID())
-		tab.Update(peers[i])
+		tab.Update(&KPId{
+			KId: peers[i].Id,
+			PId: uint64(i),
+		})
 	}
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tab.Find(peers[i])
+		tab.Find(peers[i].Id)
 	}
 }

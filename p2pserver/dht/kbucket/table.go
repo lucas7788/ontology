@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/log"
 )
 
@@ -47,7 +48,7 @@ type CplRefresh struct {
 // RoutingTable defines the routing table.
 type RoutingTable struct {
 	// ID of the local peer
-	local ID
+	local *KadKeyId
 
 	tabLock sync.RWMutex
 
@@ -59,14 +60,14 @@ type RoutingTable struct {
 	cplRefreshedAt map[uint]time.Time
 
 	// notification callback functions
-	PeerRemoved func(uint64)
-	PeerAdded   func(uint64)
+	PeerRemoved func(id KadId)
+	PeerAdded   func(id KadId)
 }
 
-func noop(_ uint64) {}
+func noop(_ KadId) {}
 
 // NewRoutingTable creates a new routing table with a given bucketsize, local ID, and latency tolerance.
-func NewRoutingTable(bucketsize int, localID ID) *RoutingTable {
+func NewRoutingTable(bucketsize int, localID *KadKeyId) *RoutingTable {
 	rt := &RoutingTable{
 		Buckets:        []*Bucket{newBucket()},
 		bucketsize:     bucketsize,
@@ -95,12 +96,23 @@ func (rt *RoutingTable) GetTrackedCplsForRefresh() []CplRefresh {
 }
 
 // GenRandPeerID generates a random peerID for a given Cpl
+func (rt *RoutingTable) GenRandKID(targetCpl uint) KadId {
+	addr := make([]byte, 20)
+	rand.Read(addr)
+	local := rt.local.Id
+	copy(addr[:targetCpl], local[:targetCpl])
+	address, _ := common.AddressParseFromBytes(addr)
+	return address
+}
+
+// GenRandPeerID generates a random peerID for a given Cpl
 func (rt *RoutingTable) GenRandPeerID(targetCpl uint) (uint64, error) {
 	if targetCpl > maxCplForRefresh {
 		return 0, fmt.Errorf("cannot generate peer ID for Cpl greater than %d", maxCplForRefresh)
 	}
 
-	localPrefix := binary.BigEndian.Uint16(rt.local)
+	//TODO
+	localPrefix := binary.BigEndian.Uint16(rt.local.Id[:])
 
 	// For host with ID `L`, an ID `K` belongs to a bucket with ID `B` ONLY IF CommonPrefixLen(L,K) is EXACTLY B.
 	// Hence, to achieve a targetPrefix `T`, we must toggle the (T+1)th bit in L & then copy (T+1) bits from L
@@ -120,8 +132,8 @@ func (rt *RoutingTable) GenRandPeerID(targetCpl uint) (uint64, error) {
 }
 
 // ResetCplRefreshedAtForID resets the refresh time for the Cpl of the given ID.
-func (rt *RoutingTable) ResetCplRefreshedAtForID(id ID, newTime time.Time) {
-	cpl := CommonPrefixLen(id, rt.local)
+func (rt *RoutingTable) ResetCplRefreshedAtForID(id KadId, newTime time.Time) {
+	cpl := CommonPrefixLen(id, rt.local.Id)
 	if uint(cpl) > maxCplForRefresh {
 		return
 	}
@@ -133,9 +145,9 @@ func (rt *RoutingTable) ResetCplRefreshedAtForID(id ID, newTime time.Time) {
 }
 
 // Update adds or moves the given peer to the front of its respective bucket
-func (rt *RoutingTable) Update(p uint64) error {
-	peerID := ConvertPeerID(p)
-	cpl := CommonPrefixLen(peerID, rt.local)
+func (rt *RoutingTable) Update(p *KPId) error {
+	peerID := p.KId
+	cpl := CommonPrefixLen(peerID, rt.local.Id)
 
 	rt.tabLock.Lock()
 	defer rt.tabLock.Unlock()
@@ -145,7 +157,7 @@ func (rt *RoutingTable) Update(p uint64) error {
 	}
 
 	bucket := rt.Buckets[bucketID]
-	if bucket.Has(p) {
+	if bucket.Has(p.KId) {
 		// If the peer is already in the table, move it to the front.
 		// This signifies that it it "more active" and the less active nodes
 		// Will as a result tend towards the back of the list
@@ -159,7 +171,7 @@ func (rt *RoutingTable) Update(p uint64) error {
 	if bucket.Len() < rt.bucketsize {
 		bucket.PushFront(p)
 		// call back notifier
-		rt.PeerAdded(p)
+		rt.PeerAdded(p.KId)
 		return nil
 	}
 
@@ -177,7 +189,7 @@ func (rt *RoutingTable) Update(p uint64) error {
 			return ErrPeerRejectedNoCapacity
 		}
 		bucket.PushFront(p)
-		rt.PeerAdded(p)
+		rt.PeerAdded(p.KId)
 		return nil
 	}
 
@@ -186,9 +198,9 @@ func (rt *RoutingTable) Update(p uint64) error {
 
 // Remove deletes a peer from the routing table. This is to be used
 // when we are sure a node has disconnected completely.
-func (rt *RoutingTable) Remove(p uint64) {
-	peerID := ConvertPeerID(p)
-	cpl := CommonPrefixLen(peerID, rt.local)
+func (rt *RoutingTable) Remove(p KadId) {
+	peerID := p
+	cpl := CommonPrefixLen(peerID, rt.local.Id)
 
 	rt.tabLock.Lock()
 	defer rt.tabLock.Unlock()
@@ -209,7 +221,7 @@ func (rt *RoutingTable) nextBucket() {
 	// _allegedly_ is used here to denote that *all* peers in the last bucket might feasibly belong to another bucket.
 	// This could happen if e.g. we've unfolded 4 buckets, and all peers in folded bucket 5 really belong in bucket 8.
 	bucket := rt.Buckets[len(rt.Buckets)-1]
-	newBucket := bucket.Split(len(rt.Buckets)-1, rt.local)
+	newBucket := bucket.Split(len(rt.Buckets)-1, rt.local.Id)
 	rt.Buckets = append(rt.Buckets, newBucket)
 
 	// The newly formed bucket still contains too many peers. We probably just unfolded a empty bucket.
@@ -220,32 +232,32 @@ func (rt *RoutingTable) nextBucket() {
 }
 
 // Find a specific peer by ID or return nil
-func (rt *RoutingTable) Find(id uint64) (uint64, bool) {
-	srch := rt.NearestPeers(ConvertPeerID(id), 1)
-	if len(srch) == 0 || srch[0] != id {
-		return 0, false
+func (rt *RoutingTable) Find(id KadId) (*KPId, bool) {
+	srch := rt.NearestPeers(id, 1)
+	if len(srch) == 0 || srch[0].KId != id {
+		return nil, false
 	}
 	return srch[0], true
 }
 
 // NearestPeer returns a single peer that is nearest to the given ID
-func (rt *RoutingTable) NearestPeer(id ID) (uint64, bool) {
+func (rt *RoutingTable) NearestPeer(id KadId) (*KPId, bool) {
 	peers := rt.NearestPeers(id, 1)
 	if len(peers) > 0 {
 		return peers[0], true
 	}
 
 	log.Debugf("NearestPeer: Returning nil, table size = %d", rt.Size())
-	return 0, false
+	return nil, false
 }
 
 // NearestPeers returns a list of the 'count' closest peers to the given ID
-func (rt *RoutingTable) NearestPeers(id ID, count int) []uint64 {
+func (rt *RoutingTable) NearestPeers(id KadId, count int) []*KPId {
 	// This is the number of bits _we_ share with the key. All peers in this
 	// bucket share cpl bits with us and will therefore share at least cpl+1
 	// bits with the given key. +1 because both the target and all peers in
 	// this bucket differ from us in the cpl bit.
-	cpl := CommonPrefixLen(id, rt.local)
+	cpl := CommonPrefixLen(id, rt.local.Id)
 
 	// It's assumed that this also protects the buckets.
 	rt.tabLock.RLock()
@@ -296,7 +308,7 @@ func (rt *RoutingTable) NearestPeers(id ID, count int) []uint64 {
 		pds.peers = pds.peers[:count]
 	}
 
-	out := make([]uint64, 0, pds.Len())
+	out := make([]*KPId, 0, pds.Len())
 	for _, p := range pds.peers {
 		out = append(out, p.p)
 	}
@@ -316,8 +328,8 @@ func (rt *RoutingTable) Size() int {
 }
 
 // ListPeers takes a RoutingTable and returns a list of all peers from all buckets in the table.
-func (rt *RoutingTable) ListPeers() []uint64 {
-	var peers []uint64
+func (rt *RoutingTable) ListPeers() []*KPId {
+	var peers []*KPId
 	rt.tabLock.RLock()
 	for _, buck := range rt.Buckets {
 		peers = append(peers, buck.Peers()...)

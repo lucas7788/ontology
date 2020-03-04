@@ -27,12 +27,13 @@ import (
 	"sync"
 	"time"
 
+	evtActor "github.com/ontio/ontology-eventbus/actor"
 	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/common/log"
-	"github.com/ontio/ontology/core/ledger"
 	"github.com/ontio/ontology/p2pserver/common"
 	"github.com/ontio/ontology/p2pserver/common/set"
 	"github.com/ontio/ontology/p2pserver/dht"
+	"github.com/ontio/ontology/p2pserver/dht/kbucket"
 	"github.com/ontio/ontology/p2pserver/message/msg_pack"
 	"github.com/ontio/ontology/p2pserver/message/types"
 	"github.com/ontio/ontology/p2pserver/net/protocol"
@@ -55,6 +56,7 @@ func NewNetServer() p2p.P2P {
 type NetServer struct {
 	base     peer.PeerCom
 	listener net.Listener
+	pid      *evtActor.PID
 	NetChan  chan *types.MsgPayload
 	connectingNodes
 	PeerAddrMap
@@ -111,6 +113,7 @@ func (this *NetServer) init() error {
 	this.base.SetRelay(true)
 
 	rand.Seed(time.Now().UnixNano())
+
 	id := rand.Uint64()
 
 	this.base.SetID(id)
@@ -123,7 +126,7 @@ func (this *NetServer) init() error {
 	this.inConnRecord.InConnectingAddrs = set.NewStringSet()
 	this.outConnRecord.OutConnectingAddrs = set.NewStringSet()
 
-	dtable, err := dht.New(context.Background(), id)
+	dtable, err := dht.New(context.Background())
 	if err != nil {
 		panic("fail to create dht")
 	}
@@ -149,9 +152,17 @@ func (this *NetServer) GetID() uint64 {
 	return this.base.GetID()
 }
 
+func (this *NetServer) GetKadKeyId() *kbucket.KadKeyId {
+	return this.dht.GetKadKeyId()
+}
+
 // SetHeight sets the local's height
 func (this *NetServer) SetHeight(height uint64) {
 	this.base.SetHeight(height)
+}
+
+func (this *NetServer) SetPID(pid *evtActor.PID) {
+	this.pid = pid
 }
 
 // GetHeight return peer's heigh
@@ -292,7 +303,6 @@ func (this *NetServer) Connect(addr string) error {
 	isTls := config.DefConfig.P2PNode.IsTLS
 	var conn net.Conn
 	var err error
-	var remotePeer *peer.Peer
 	if isTls {
 		conn, err = TLSDial(addr)
 		if err != nil {
@@ -309,25 +319,8 @@ func (this *NetServer) Connect(addr string) error {
 		}
 	}
 
-	addr = conn.RemoteAddr().String()
-	log.Debugf("[p2p]peer %s connect with %s with %s",
-		conn.LocalAddr().String(), conn.RemoteAddr().String(),
-		conn.RemoteAddr().Network())
-
-	this.AddOutConnRecord(addr)
-	remotePeer = peer.NewPeer()
-	this.AddPeerAddress(addr, remotePeer)
-	remotePeer.Link.SetAddr(addr)
-	remotePeer.Link.SetConn(conn)
-	remotePeer.AttachChan(this.NetChan)
-	go remotePeer.Link.Rx()
-	remotePeer.SetState(common.HAND)
-
-	version := msgpack.NewVersion(this, ledger.DefLedger.GetCurrentBlockHeight())
-	err = remotePeer.Send(version)
+	err = HandshakeClient(this, conn)
 	if err != nil {
-		this.RemoveFromOutConnRecord(addr)
-		log.Warn(err)
 		return err
 	}
 	return nil
@@ -422,16 +415,9 @@ func (this *NetServer) startNetAccept(listener net.Listener) {
 			continue
 		}
 
-		remotePeer := peer.NewPeer()
-		addr := conn.RemoteAddr().String()
-		this.AddInConnRecord(addr)
-
-		this.AddPeerAddress(addr, remotePeer)
-
-		remotePeer.Link.SetAddr(addr)
-		remotePeer.Link.SetConn(conn)
-		remotePeer.AttachChan(this.NetChan)
-		go remotePeer.Link.Rx()
+		go func() {
+			HandshakeServer(this, conn)
+		}()
 	}
 }
 
@@ -641,17 +627,17 @@ func (this *NetServer) SetOwnAddress(addr string) {
 	}
 }
 
-func (ns *NetServer) UpdateDHT(id uint64) bool {
+func (ns *NetServer) UpdateDHT(id *kbucket.KPId) bool {
 	ns.dht.Update(id)
 	return true
 }
 
-func (ns *NetServer) RemoveDHT(id uint64) bool {
+func (ns *NetServer) RemoveDHT(id kbucket.KadId) bool {
 	ns.dht.Remove(id)
 	return true
 }
 
-func (ns *NetServer) BetterPeers(id uint64, count int) []uint64 {
+func (ns *NetServer) BetterPeers(id kbucket.KadId, count int) []*kbucket.KPId {
 	return ns.dht.BetterPeers(id, count)
 }
 
@@ -667,10 +653,10 @@ func (ns *NetServer) findSelf() {
 		select {
 		case <-tick.C:
 			log.Debug("[dht] start to find myself")
-			closer := ns.dht.BetterPeers(ns.GetID(), dht.AlphaValue)
-			for _, pid := range closer {
-				log.Debugf("[dht] find closr peer %d", pid)
-				ns.Send(ns.GetPeer(pid), msgpack.NewFindNodeReq(ns.GetID()))
+			closer := ns.dht.BetterPeers(ns.dht.GetKadKeyId().Id, dht.AlphaValue)
+			for _, id := range closer {
+				log.Debugf("[dht] find closr peer %x", id)
+				ns.Send(ns.GetPeer(id.PId), msgpack.NewFindNodeReq(id.KId))
 			}
 		}
 	}
@@ -684,16 +670,11 @@ func (ns *NetServer) refreshCPL() {
 		case <-tick.C:
 			for curCPL := range ns.dht.RoutingTable().Buckets {
 				log.Debugf("[dht] start to refresh bucket: %d", curCPL)
-				randPeer, err := ns.dht.RoutingTable().GenRandPeerID(uint(curCPL))
-				if err != nil {
-					log.Errorf("failed to generate peerID for cpl %d, err: %s", curCPL, err)
-					continue
-				}
-
+				randPeer := ns.dht.RoutingTable().GenRandKID(uint(curCPL))
 				closer := ns.dht.BetterPeers(randPeer, dht.AlphaValue)
 				for _, pid := range closer {
 					log.Debugf("[dht] find closr peer %d", pid)
-					ns.Send(ns.GetPeer(pid), msgpack.NewFindNodeReq(randPeer))
+					ns.Send(ns.GetPeer(pid.PId), msgpack.NewFindNodeReq(pid.KId))
 				}
 			}
 		}

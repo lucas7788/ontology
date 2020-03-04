@@ -19,43 +19,116 @@
 package kbucket
 
 import (
-	"strconv"
-
-	"github.com/minio/sha256-simd"
+	"crypto/sha256"
+	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/ontio/ontology/account"
+	"github.com/ontio/ontology/common"
+	"github.com/ontio/ontology/core/types"
 	ks "github.com/ontio/ontology/p2pserver/dht/kbucket/keyspace"
+	"io"
 )
 
-// ID is used in dht
-type ID []byte
+var Difficulty = 18 //bit
 
-// ConvertPeerID convert ontology peerid to dht id in bucket
-func ConvertPeerID(id uint64) ID {
-	hash := sha256.Sum256([]byte(strconv.FormatUint(id, 10)))
-	return hash[:]
+type KadId = common.Address
+
+type KadKeyId struct {
+	PublicKey keypair.PublicKey
+	Id        KadId
 }
 
-func xor(a, b ID) ID {
-	return ID(ks.XOR(a, b))
+func (this *KadKeyId) Serialization(sink *common.ZeroCopySink) {
+	sink.WriteVarBytes(keypair.SerializePublicKey(this.PublicKey))
+	sink.WriteAddress(this.Id)
+}
+
+func (this *KadKeyId) Deserialization(source *common.ZeroCopySource) error {
+	data, _, irregular, eof := source.NextVarBytes()
+	if irregular {
+		return common.ErrIrregularData
+	}
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	pub, err := keypair.DeserializePublicKey(data)
+	if err != nil {
+		return err
+	}
+	this.PublicKey = pub
+	this.Id, eof = source.NextAddress()
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func KadKeyIdFromPubkey(pubKey keypair.PublicKey) *KadKeyId {
+	addr := types.AddressFromPubKey(pubKey)
+	return &KadKeyId{
+		PublicKey: pubKey,
+		Id:        addr,
+	}
+}
+
+func KadIdFromBytes(addr []byte) (KadId, error) {
+	return common.AddressParseFromBytes(addr)
+}
+
+func GenerateRandomId() *KadKeyId {
+	var acc *account.Account
+	for {
+		acc = account.NewAccount("")
+		if ValidatePublicKey(acc.PublicKey) {
+			break
+		}
+	}
+	addr := types.AddressFromPubKey(acc.PublicKey)
+	return &KadKeyId{
+		PublicKey: acc.PublicKey,
+		Id:        addr,
+	}
+}
+
+func ValidatePublicKey(pubKey keypair.PublicKey) bool {
+	pub := keypair.SerializePublicKey(pubKey)
+	res := sha256.Sum256(pub)
+	hash := sha256.Sum256(res[:])
+	limit := Difficulty >> 3
+	for i := 0; i < limit; i++ {
+		if hash[i] != 0 {
+			return false
+		}
+	}
+	diff := Difficulty - limit*8
+	if diff != 0 {
+		x := hash[limit] >> uint8(8-diff)
+		if x != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func xor(a, b KadId) KadId {
+	id, _ := KadIdFromBytes(ks.XOR(a[:], b[:]))
+	return id
 }
 
 // Closer returns true if a is closer to key than b is
-func Closer(a, b, key uint64) bool {
-	aid := ConvertPeerID(a)
-	bid := ConvertPeerID(b)
-	tgt := ConvertPeerID(key)
-	adist := xor(aid, tgt)
-	bdist := xor(bid, tgt)
+func Closer(a, b, key KadId) bool {
+	adist := xor(a, key)
+	bdist := xor(b, key)
 
-	return adist.less(bdist)
+	return less(adist, bdist)
 }
 
-func (id ID) less(other ID) bool {
-	a := ks.Key{Space: ks.XORKeySpace, Bytes: id}
-	b := ks.Key{Space: ks.XORKeySpace, Bytes: other}
+func less(id, other KadId) bool {
+	a := ks.Key{Space: ks.XORKeySpace, Bytes: id[:]}
+	b := ks.Key{Space: ks.XORKeySpace, Bytes: other[:]}
 	return a.Less(b)
 }
 
 // CommonPrefixLen(cpl) calculate two ID's xor prefix 0
-func CommonPrefixLen(a, b ID) int {
-	return ks.ZeroPrefixLen(ks.XOR(a, b))
+func CommonPrefixLen(a, b KadId) int {
+	return ks.ZeroPrefixLen(ks.XOR(a[:], b[:]))
 }

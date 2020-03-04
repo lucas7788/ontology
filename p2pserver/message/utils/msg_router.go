@@ -54,8 +54,8 @@ func (this *MessageRouter) init(p2p p2p.P2P) {
 	this.p2p = p2p
 
 	// Register message handler
-	this.RegisterMsgHandler(msgCommon.VERSION_TYPE, VersionHandle)
-	this.RegisterMsgHandler(msgCommon.VERACK_TYPE, VerAckHandle)
+	//this.RegisterMsgHandler(msgCommon.VERSION_TYPE, VersionHandle)
+	//this.RegisterMsgHandler(msgCommon.VERACK_TYPE, VerAckHandle)
 	this.RegisterMsgHandler(msgCommon.GetADDR_TYPE, AddrReqHandle)
 	this.RegisterMsgHandler(msgCommon.ADDR_TYPE, AddrHandle)
 	this.RegisterMsgHandler(msgCommon.PING_TYPE, PingHandle)

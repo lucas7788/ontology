@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 	evtActor "github.com/ontio/ontology-eventbus/actor"
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
@@ -140,7 +140,7 @@ func FindNodeHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, a
 	var fresp msgTypes.FindNodeResp
 	// check the target is my self
 	log.Debugf("[dht] find node for peerid: %d", freq.TargetID)
-	if freq.TargetID == p2p.GetID() {
+	if freq.TargetID == p2p.GetKadKeyId().Id {
 		fresp.Success = true
 		fresp.TargetID = freq.TargetID
 		// you've already connected with me so there's no need to give you my address
@@ -155,10 +155,10 @@ func FindNodeHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, a
 
 	paddrs := p2p.GetPeerStringAddr()
 	for _, pid := range closer {
-		if addr, ok := paddrs[pid]; ok {
+		if addr, ok := paddrs[pid.PId]; ok {
 			curAddr := msgTypes.PeerAddr{
 				Addr:   addr,
-				PeerID: pid,
+				PeerID: pid.PId,
 			}
 			fresp.CloserPeers = append(fresp.CloserPeers, curAddr)
 
@@ -263,7 +263,6 @@ func BlockHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, args
 			if remotePeer != nil {
 				remotePeer.Close()
 			}
-
 			return
 		}
 
@@ -456,7 +455,7 @@ func VerAckHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, arg
 	}
 
 	remotePeer.SetState(msgCommon.ESTABLISH)
-	p2p.UpdateDHT(data.Id)
+	//p2p.UpdateDHT(data.Id)
 
 	p2p.RemoveFromConnectingList(data.Addr)
 	remotePeer.DumpInfo()
@@ -684,7 +683,7 @@ func DisconnectHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID,
 		p2p.RemovePeerAddress(data.Addr)
 		remotePeer.Close()
 	}
-	p2p.RemoveDHT(data.Id)
+	p2p.RemoveDHT(remotePeer.GetKId())
 }
 
 //get blk hdrs from starthash to stophash

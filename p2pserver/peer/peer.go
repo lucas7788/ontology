@@ -29,6 +29,7 @@ import (
 	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/p2pserver/common"
+	"github.com/ontio/ontology/p2pserver/dht/kbucket"
 	conn "github.com/ontio/ontology/p2pserver/link"
 	"github.com/ontio/ontology/p2pserver/message/types"
 )
@@ -43,6 +44,7 @@ type PeerCom struct {
 	port         uint16
 	height       uint64
 	softVersion  string
+	kId          kbucket.KadId
 }
 
 // SetID sets a peer's id
@@ -53,6 +55,14 @@ func (this *PeerCom) SetID(id uint64) {
 // GetID returns a peer's id
 func (this *PeerCom) GetID() uint64 {
 	return this.id
+}
+
+func (this *PeerCom) GetKId() kbucket.KadId {
+	return this.kId
+}
+
+func (this *PeerCom) SetKId(id kbucket.KadId) {
+	this.kId = id
 }
 
 // SetVersion sets a peer's version
@@ -218,6 +228,16 @@ func (this *Peer) Close() {
 //GetID return peer`s id
 func (this *Peer) GetID() uint64 {
 	return this.base.GetID()
+}
+
+//GetID return peer`s id
+func (this *Peer) GetKId() kbucket.KadId {
+	return this.base.GetKId()
+}
+
+//GetID return peer`s id
+func (this *Peer) SetKId(id kbucket.KadId) {
+	this.base.SetKId(id)
 }
 
 //GetRelay return peer`s relay state

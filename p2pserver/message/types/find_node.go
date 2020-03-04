@@ -23,6 +23,7 @@ import (
 
 	"github.com/ontio/ontology/common"
 	ncomm "github.com/ontio/ontology/p2pserver/common"
+	"github.com/ontio/ontology/p2pserver/dht/kbucket"
 )
 
 var (
@@ -30,12 +31,12 @@ var (
 )
 
 type FindNodeReq struct {
-	TargetID uint64
+	TargetID kbucket.KadId
 }
 
 // Serialization message payload
 func (req FindNodeReq) Serialization(sink *common.ZeroCopySink) {
-	sink.WriteUint64(req.TargetID)
+	req.TargetID.Serialization(sink)
 }
 
 // CmdType return this message type
@@ -45,7 +46,7 @@ func (req *FindNodeReq) CmdType() string {
 
 // Deserialization message payload
 func (req *FindNodeReq) Deserialization(source *common.ZeroCopySource) error {
-	id, eof := source.NextUint64()
+	id, eof := source.NextAddress()
 	if eof {
 		return errRead
 	}
@@ -61,7 +62,7 @@ type PeerAddr struct {
 }
 
 type FindNodeResp struct {
-	TargetID    uint64
+	TargetID    kbucket.KadId
 	Success     bool
 	Address     string
 	CloserPeers []PeerAddr
@@ -69,7 +70,7 @@ type FindNodeResp struct {
 
 // Serialization message payload
 func (resp FindNodeResp) Serialization(sink *common.ZeroCopySink) {
-	sink.WriteUint64(resp.TargetID)
+	sink.WriteAddress(resp.TargetID)
 	sink.WriteBool(resp.Success)
 	sink.WriteString(resp.Address)
 	sink.WriteUint32(uint32(len(resp.CloserPeers)))
@@ -86,7 +87,7 @@ func (resp *FindNodeResp) CmdType() string {
 
 // Deserialization message payload
 func (resp *FindNodeResp) Deserialization(source *common.ZeroCopySource) error {
-	targetID, eof := source.NextUint64()
+	targetID, eof := source.NextAddress()
 	if eof {
 		return errRead
 	}

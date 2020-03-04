@@ -134,6 +134,7 @@ const (
 	DISCONNECT_TYPE    = "disconnect"  //peer disconnect info raise by link
 	FINDNODE_TYPE      = "findnode"    // find node using dht
 	FINDNODE_RESP_TYPE = "findnodeack" // find node using dht
+	UPDATE_KADID_TYPE  = "updatekadid" //update node kadid
 )
 
 type AppendPeerID struct {

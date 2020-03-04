@@ -224,6 +224,7 @@ func (this *P2PServer) GetTime() int64 {
 func (this *P2PServer) SetPID(pid *evtActor.PID) {
 	this.pid = pid
 	this.msgRouter.SetPID(pid)
+	this.network.SetPID(pid)
 }
 
 // GetPID returns p2p actor

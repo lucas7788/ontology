@@ -23,6 +23,8 @@ import (
 	"github.com/ontio/ontology/p2pserver/common"
 	"github.com/ontio/ontology/p2pserver/message/types"
 	"github.com/ontio/ontology/p2pserver/peer"
+	"github.com/ontio/ontology/p2pserver/dht/kbucket"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 //P2P represent the net interface of p2p package
@@ -65,9 +67,11 @@ type P2P interface {
 	IsOwnAddress(addr string) bool
 	IsAddrFromConnecting(addr string) bool
 
-	UpdateDHT(id uint64) bool
-	RemoveDHT(id uint64) bool
-	BetterPeers(id uint64, count int) []uint64
+	UpdateDHT(id *kbucket.KPId) bool
+	RemoveDHT(id kbucket.KadId) bool
+	BetterPeers(id kbucket.KadId, count int) []*kbucket.KPId
+	GetKadKeyId() *kbucket.KadKeyId
 
 	GetPeerStringAddr() map[uint64]string
+	SetPID(pid *actor.PID)
 }
