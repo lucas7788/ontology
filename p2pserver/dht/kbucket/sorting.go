@@ -60,20 +60,3 @@ func (pds *peerDistanceSorter) appendPeersFromList(l *list.List) {
 func (pds *peerDistanceSorter) sort() {
 	sort.Sort(pds)
 }
-
-// Sort the given peers by their ascending distance from the target. A new slice is returned.
-func SortClosestPeers(peers []KadId, target KadId) []KadId {
-	sorter := peerDistanceSorter{
-		peers:  make([]peerDistance, 0, len(peers)),
-		target: target,
-	}
-	for _, p := range peers {
-		sorter.appendPeer(p)
-	}
-	sorter.sort()
-	out := make([]KadId, 0, sorter.Len())
-	for _, p := range sorter.peers {
-		out = append(out, p.p)
-	}
-	return out
-}

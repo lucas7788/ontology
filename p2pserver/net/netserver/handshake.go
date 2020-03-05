@@ -2,6 +2,11 @@ package netserver
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
+	"time"
+
 	common2 "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
 	"github.com/ontio/ontology/common/log"
@@ -11,10 +16,6 @@ import (
 	"github.com/ontio/ontology/p2pserver/message/msg_pack"
 	"github.com/ontio/ontology/p2pserver/message/types"
 	"github.com/ontio/ontology/p2pserver/peer"
-	"net"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func HandshakeClient(netServer *NetServer, conn net.Conn) error {
@@ -23,14 +24,10 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 		conn.LocalAddr().String(), conn.RemoteAddr().String(),
 		conn.RemoteAddr().Network())
 
-	// 1. send version
+	// 1. sendMsg version
 	version := msgpack.NewVersion(netServer, ledger.DefLedger.GetCurrentBlockHeight())
-	sink := common2.NewZeroCopySink(nil)
-	types.WriteMessage(sink, version)
-	err := send(conn, sink.Bytes())
+	err := sendMsg(conn, version)
 	if err != nil {
-		netServer.RemoveFromOutConnRecord(addr)
-		log.Warn(err)
 		return err
 	}
 
@@ -43,21 +40,12 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 		return fmt.Errorf("")
 	}
 	// 3. update kadId
-	versionRaw := msg.(*types.Version)
-	remotePeer, err := versionHandle(netServer, versionRaw, conn)
-	if err != nil {
-		return err
-	}
-	if remotePeer == nil {
-		return fmt.Errorf("remote peer is nil")
-	}
+	recvedVersion := msg.(*types.Version)
 
-	if versionRaw.P.SoftVersion > "v1.9.0" && false {
+	if recvedVersion.P.SoftVersion > "v1.9.0" && false {
 		log.Info("*******come in dht*******")
 		msg := msgpack.NewUpdateKadKeyId(netServer)
-		sink.Reset()
-		types.WriteMessage(sink, msg)
-		err = send(conn, sink.Bytes())
+		err = sendMsg(conn, msg)
 		if err != nil {
 			return err
 		}
@@ -70,25 +58,29 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 			return fmt.Errorf("")
 		}
 		kadKeyId := msg.(*types.UpdateKadId)
-
-		if !kbucket.ValidatePublicKey(kadKeyId.KadKeyId.PublicKey) {
-			return fmt.Errorf("validate publickey failed")
-		}
 		if !netServer.UpdateDHT(kadKeyId.KadKeyId.Id) {
 			log.Errorf("[HandshakeClient] UpdateDHT failed, kadId: %s", kadKeyId.KadKeyId.Id.ToHexString())
 			return fmt.Errorf("[HandshakeClient] UpdateDHT failed, kadId: %s", kadKeyId.KadKeyId.Id.ToHexString())
 		}
-		remotePeer.SetKId(kadKeyId.KadKeyId.Id)
 	}
 
-	// 5. send ack
+	// 5. sendMsg ack
 	ack := msgpack.NewVerAck()
-	sink.Reset()
-	types.WriteMessage(sink, ack)
-	err = send(conn, sink.Bytes())
+	err = sendMsg(conn, ack)
 	if err != nil {
 		netServer.RemoveFromOutConnRecord(addr)
 		log.Warn(err)
+		return err
+	}
+
+	// Obsolete node
+	err = removeOldPeer(netServer, recvedVersion.P.Nonce, conn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
+
+	remotePeer, err := createPeer(netServer, recvedVersion, conn)
+	if err != nil {
 		return err
 	}
 
@@ -102,6 +94,14 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 	log.Infof("remotePeer.GetId():%d,addr: %s, link id: %d", remotePeer.GetID(), addr, remotePeer.Link.GetID())
 	go remotePeer.Link.Rx()
 	remotePeer.SetState(common.ESTABLISH)
+
+	if netServer.pid != nil {
+		input := &common.AppendPeerID{
+			ID: recvedVersion.P.Nonce,
+		}
+		netServer.pid.Tell(input)
+	}
+
 	return nil
 }
 
@@ -116,20 +116,16 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 		return fmt.Errorf("[HandshakeServer] expected version message")
 	}
 	version := msg.(*types.Version)
-	remotePeer, err := versionHandle(netServer, version, conn)
-	if err != nil || remotePeer == nil {
-		return err
-	}
-	// 2. send version
-	sink := common2.NewZeroCopySink(nil)
+	// 2. sendMsg version
 	ver := msgpack.NewVersion(netServer, ledger.DefLedger.GetCurrentBlockHeight())
-	types.WriteMessage(sink, ver)
-	err = send(conn, sink.Bytes())
+	err = sendMsg(conn, ver)
 	if err != nil {
-		log.Errorf("[HandshakeServer] WriteMessage send failed, error: %s", err)
+		log.Errorf("[HandshakeServer] WriteMessage sendMsg failed, error: %s", err)
+		return err
 	}
 
 	// 3. read update kadkey id
+	kid := kbucket.PseudoKadIdFromUint64(version.P.Nonce)
 	if version.P.SoftVersion > "v1.9.0" && false {
 		msg, _, err := types.ReadMessage(conn)
 		if err != nil {
@@ -140,23 +136,13 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 			return fmt.Errorf("[HandshakeServer] expected update kadkeyid message")
 		}
 		kadkeyId := msg.(*types.UpdateKadId)
-		remotePeer := netServer.GetPeerFromAddr(conn.RemoteAddr().String())
-		remotePeer.SetKId(kadkeyId.KadKeyId.Id)
-		netServer.dht.Update(kadkeyId.KadKeyId.Id)
-		if !kbucket.ValidatePublicKey(kadkeyId.KadKeyId.PublicKey) {
-			log.Errorf("[HandshakeServer] ValidatePublicKey failed, kadId:%s", kadkeyId.KadKeyId.Id.ToHexString())
-			return fmt.Errorf("[HandshakeServer] ValidatePublicKey failed, kadId:%s", kadkeyId.KadKeyId.Id.ToHexString())
-		}
-		netServer.dht.Update(kadkeyId.KadKeyId.Id)
-		// 4. send update kadkey id
+		kid = kadkeyId.KadKeyId.Id
+		// 4. sendMsg update kadkey id
 		msg = msgpack.NewUpdateKadKeyId(netServer)
-		sink.Reset()
-		types.WriteMessage(sink, msg)
-		err = send(conn, sink.Bytes())
+		err = sendMsg(conn, msg)
 		if err != nil {
 			return err
 		}
-		remotePeer.SetKId(kadkeyId.KadKeyId.Id)
 	}
 
 	// 5. read version ack
@@ -169,21 +155,41 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 		return fmt.Errorf("[HandshakeServer] expected version ack message")
 	}
 
-	netServer.AddNbrNode(remotePeer)
+	// Obsolete node
+	err = removeOldPeer(netServer, version.P.Nonce, conn.RemoteAddr().String())
+	if err != nil {
+		return err
+	}
 
+	netServer.dht.Update(kid)
+	remotePeer, err := createPeer(netServer, version, conn)
+	if err != nil {
+		return err
+	}
+	remotePeer.SetKId(kid)
 	addr := conn.RemoteAddr().String()
-	netServer.AddInConnRecord(addr)
-
-	netServer.AddPeerAddress(addr, remotePeer)
-
 	remotePeer.Link.SetAddr(addr)
 	remotePeer.Link.SetConn(conn)
 	remotePeer.AttachChan(netServer.NetChan)
+
+	netServer.AddNbrNode(remotePeer)
+	netServer.AddInConnRecord(addr)
+	netServer.AddPeerAddress(addr, remotePeer)
+
 	go remotePeer.Link.Rx()
+	if netServer.pid != nil {
+		input := &common.AppendPeerID{
+			ID: version.P.Nonce,
+		}
+		netServer.pid.Tell(input)
+	}
 	return nil
 }
 
-func send(conn net.Conn, rawPacket []byte) error {
+func sendMsg(conn net.Conn, msg types.Message) error {
+	sink := common2.NewZeroCopySink(nil)
+	types.WriteMessage(sink, msg)
+	rawPacket := sink.Bytes()
 	nByteCnt := len(rawPacket)
 	log.Tracef("[p2p]TX buf length: %d\n", nByteCnt)
 
@@ -200,7 +206,26 @@ func send(conn net.Conn, rawPacket []byte) error {
 	return nil
 }
 
-func versionHandle(p2p *NetServer, version *types.Version, conn net.Conn) (*peer.Peer, error) {
+func checkReservedPeers(remoteAddr string) error {
+	if config.DefConfig.P2PNode.ReservedPeersOnly && len(config.DefConfig.P2PNode.ReservedCfg.ReservedPeers) > 0 {
+		found := false
+		for _, addr := range config.DefConfig.P2PNode.ReservedCfg.ReservedPeers {
+			if strings.HasPrefix(remoteAddr, addr) {
+				log.Debug("[createPeer]peer in reserved list", remoteAddr)
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Debug("[createPeer]peer not in reserved list,close", remoteAddr)
+			return fmt.Errorf("the remote addr: %s not in ReservedPeers", remoteAddr)
+		}
+	}
+
+	return nil
+}
+
+func createPeer(p2p *NetServer, version *types.Version, conn net.Conn) (*peer.Peer, error) {
 	log.Infof("remoteAddr: %s, localAddr: %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	remoteAddr := conn.RemoteAddr().String()
 	addrIp, err := common.ParseIPAddr(remoteAddr)
@@ -208,61 +233,12 @@ func versionHandle(p2p *NetServer, version *types.Version, conn net.Conn) (*peer
 		log.Warn(err)
 		return nil, err
 	}
-	nodeAddr := addrIp + ":" +
-		strconv.Itoa(int(version.P.SyncPort))
-	if config.DefConfig.P2PNode.ReservedPeersOnly && len(config.DefConfig.P2PNode.ReservedCfg.ReservedPeers) > 0 {
-		found := false
-		for _, addr := range config.DefConfig.P2PNode.ReservedCfg.ReservedPeers {
-			if strings.HasPrefix(remoteAddr, addr) {
-				log.Debug("[versionHandle]peer in reserved list", remoteAddr)
-				found = true
-				break
-			}
-		}
-		if !found {
-			log.Debug("[versionHandle]peer not in reserved list,close", remoteAddr)
-			return nil, fmt.Errorf("the remote addr: %s not in ReservedPeers", remoteAddr)
-		}
-	}
-	if version.P.Nonce == p2p.GetID() {
-		p2p.RemoveFromInConnRecord(remoteAddr)
-		p2p.RemoveFromOutConnRecord(remoteAddr)
-		log.Warn("[versionHandle]the node handshake with itself:", remoteAddr)
-		p2p.SetOwnAddress(nodeAddr)
-		return nil, fmt.Errorf("[versionHandle]the node handshake with itself: %s", remoteAddr)
-	}
 
-	// Obsolete node
-	p := p2p.GetPeer(version.P.Nonce)
-	if p != nil {
-		ipOld, err := common.ParseIPAddr(p.GetAddr())
-		if err != nil {
-			log.Warn("[versionHandle]exist peer %d ip format is wrong %s", version.P.Nonce, p.GetAddr())
-			return nil, fmt.Errorf("[versionHandle]exist peer %d ip format is wrong %s", version.P.Nonce, p.GetAddr())
-		}
-		ipNew, err := common.ParseIPAddr(remoteAddr)
-		if err != nil {
-			log.Warn("[versionHandle]connecting peer %d ip format is wrong %s, close", version.P.Nonce, remoteAddr)
-			return nil, fmt.Errorf("[versionHandle]connecting peer %d ip format is wrong %s, close", version.P.Nonce, remoteAddr)
-		}
-		if ipNew == ipOld {
-			//same id and same ip
-			n, delOK := p2p.DelNbrNode(version.P.Nonce)
-			if delOK {
-				log.Infof("[versionHandle]peer reconnect %d", version.P.Nonce, remoteAddr)
-				// Close the connection and release the node source
-				n.Close()
-				if p2p.pid != nil {
-					input := &common.RemovePeerID{
-						ID: version.P.Nonce,
-					}
-					p2p.pid.Tell(input)
-				}
-			}
-		} else {
-			log.Warnf("[versionHandle]same peer id from different addr: %s, %s close latest one", ipOld, ipNew)
-			return nil, nil
-		}
+	nodeAddr := addrIp + ":" + strconv.Itoa(int(version.P.SyncPort))
+	if version.P.Nonce == p2p.GetID() {
+		log.Warn("[createPeer]the node handshake with itself:", remoteAddr)
+		p2p.SetOwnAddress(nodeAddr)
+		return nil, fmt.Errorf("[createPeer]the node handshake with itself: %s", remoteAddr)
 	}
 
 	remotePeer := peer.NewPeer()
@@ -277,11 +253,42 @@ func versionHandle(p2p *NetServer, version *types.Version, conn net.Conn) (*peer
 		version.P.Services, version.P.SyncPort, version.P.Nonce,
 		version.P.Relay, version.P.StartHeight, version.P.SoftVersion)
 
-	if p2p.pid != nil {
-		input := &common.AppendPeerID{
-			ID: version.P.Nonce,
-		}
-		p2p.pid.Tell(input)
-	}
 	return remotePeer, nil
+}
+
+func removeOldPeer(p2p *NetServer, pid uint64, remoteAddr string) error {
+	p := p2p.GetPeer(pid)
+	if p != nil {
+		ipOld, err := common.ParseIPAddr(p.GetAddr())
+		if err != nil {
+			log.Warn("[createPeer]exist peer %d ip format is wrong %s", pid, p.GetAddr())
+			return fmt.Errorf("[createPeer]exist peer %d ip format is wrong %s", pid, p.GetAddr())
+		}
+		ipNew, err := common.ParseIPAddr(remoteAddr)
+		if err != nil {
+			log.Warn("[createPeer]connecting peer %d ip format is wrong %s, close", pid, remoteAddr)
+			return fmt.Errorf("[createPeer]connecting peer %d ip format is wrong %s, close", pid, remoteAddr)
+		}
+		if ipNew == ipOld {
+			//same id and same ip
+			n, delOK := p2p.DelNbrNode(pid)
+			if delOK {
+				log.Infof("[createPeer]peer reconnect %d", pid, remoteAddr)
+				// Close the connection and release the node source
+				n.Close()
+				if p2p.pid != nil {
+					input := &common.RemovePeerID{
+						ID: pid,
+					}
+					p2p.pid.Tell(input)
+				}
+			}
+		} else {
+			err := fmt.Errorf("[createPeer]same peer id from different addr: %s, %s close latest one", ipOld, ipNew)
+			log.Warn(err)
+			return err
+		}
+	}
+
+	return nil
 }

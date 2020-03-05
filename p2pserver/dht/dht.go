@@ -49,26 +49,14 @@ type DHT struct {
 	RtRefreshPeriod       time.Duration
 }
 
-// Context return dht's context
-func (dht *DHT) Context() context.Context {
-	return dht.ctx
-}
-
 // RouteTable return dht's routeTable
 func (dht *DHT) RouteTable() *kb.RouteTable {
 	return dht.routeTable
 }
 
-// New creates a new DHT with the specified host and options.
-func New(ctx context.Context) (*DHT, error) {
-	dht := makeDHT(ctx, KValue)
-	dht.RtRefreshPeriod = 10 * time.Second
-	dht.RtRefreshQueryTimeout = 10 * time.Second
-
-	return dht, nil
-}
-
-func makeDHT(ctx context.Context, bucketSize int) *DHT {
+// NewDHT creates a new DHT with the specified host and options.
+func NewDHT() *DHT {
+	bucketSize := KValue
 	keyId := kb.RandKadKeyId()
 	rt := kb.NewRoutingTable(bucketSize, keyId.Id)
 
@@ -80,17 +68,15 @@ func makeDHT(ctx context.Context, bucketSize int) *DHT {
 		log.Debugf("dht: peer: %d removed from dht", p)
 	}
 
-	dht := &DHT{
-		localKeyId: keyId,
-		ctx:        ctx,
-		birth:      time.Now(),
-		routeTable: rt,
-		bucketSize: bucketSize,
-
-		AutoRefresh: true,
+	return &DHT{
+		localKeyId:            keyId,
+		birth:                 time.Now(),
+		routeTable:            rt,
+		bucketSize:            bucketSize,
+		AutoRefresh:           true,
+		RtRefreshPeriod:       10 * time.Second,
+		RtRefreshQueryTimeout: 10 * time.Second,
 	}
-
-	return dht
 }
 
 // Update signals the routeTable to Update its last-seen status

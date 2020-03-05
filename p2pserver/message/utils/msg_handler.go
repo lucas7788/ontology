@@ -331,8 +331,7 @@ func VersionHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, ar
 		log.Warn(err)
 		return
 	}
-	nodeAddr := addrIp + ":" +
-		strconv.Itoa(int(version.P.SyncPort))
+	nodeAddr := addrIp + ":" + strconv.Itoa(int(version.P.SyncPort))
 	if config.DefConfig.P2PNode.ReservedPeersOnly && len(config.DefConfig.P2PNode.ReservedCfg.ReservedPeers) > 0 {
 		found := false
 		for _, addr := range config.DefConfig.P2PNode.ReservedCfg.ReservedPeers {

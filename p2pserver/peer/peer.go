@@ -341,7 +341,7 @@ func (this *Peer) SetHttpInfoPort(port uint16) {
 func (this *Peer) UpdateInfo(t time.Time, version uint32, services uint64,
 	syncPort uint16, nonce uint64, relay uint8, height uint64, softVer string) {
 	this.Link.UpdateRXTime(t)
-	id := kbucket.KIdFromUint64(nonce)
+	id := kbucket.PseudoKadIdFromUint64(nonce)
 	this.base.SetID(id)
 	this.base.SetVersion(version)
 	this.base.SetServices(services)
@@ -358,7 +358,7 @@ func (this *Peer) UpdateInfo(t time.Time, version uint32, services uint64,
 
 //func NewPeer(t time.Time, version uint32, services uint64,
 //	syncPort uint16, nonce uint64, relay uint8, height uint64, softVer string) *Peer {
-//		id := kbucket.KIdFromUint64(nonce)
+//		id := kbucket.PseudoKadIdFromUint64(nonce)
 //		peerCom := NewPeerCom(id, version,services, relay,true,syncPort,height,softVer)
 //		return &Peer{
 //

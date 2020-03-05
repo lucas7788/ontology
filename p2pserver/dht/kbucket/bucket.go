@@ -19,7 +19,6 @@
 package kbucket
 
 import (
-	"bytes"
 	"container/list"
 	"sync"
 )
@@ -51,8 +50,8 @@ func (b *Bucket) Has(id KadId) bool {
 	b.lk.RLock()
 	defer b.lk.RUnlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KadId)
-		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
+		curr := e.Value.(KadId)
+		if curr == id {
 			return true
 		}
 	}
@@ -63,8 +62,8 @@ func (b *Bucket) Remove(id KadId) bool {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KadId)
-		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
+		curr := e.Value.(KadId)
+		if curr == id {
 			return true
 		}
 	}
@@ -75,8 +74,8 @@ func (b *Bucket) MoveToFront(id KadId) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KadId)
-		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
+		curr := e.Value.(KadId)
+		if curr == id {
 			b.list.MoveToFront(e)
 		}
 	}

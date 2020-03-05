@@ -22,15 +22,17 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
+	"errors"
 	"io"
+	"math"
+	"math/big"
 	"math/bits"
 
-	"encoding/binary"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology/account"
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/types"
-	"math/big"
 )
 
 var Difficulty = 18 //bit
@@ -73,31 +75,28 @@ func (self KadId) GenRandKadId(prefix uint) KadId {
 }
 
 func (self KadId) ToUint64() uint64 {
-	if !isAddress(self) {
+	if self.isPseudoKadId() {
 		nonce := binary.LittleEndian.Uint64(self.val[:8])
 		return nonce
 	}
 	kid := new(big.Int).SetBytes(self.val[:])
-	u64Max := ^uint64(0)
-	uint64Max := new(big.Int).SetUint64(u64Max)
+	uint64Max := new(big.Int).SetUint64(math.MaxUint64)
 	res := kid.Mod(kid, uint64Max)
 	return res.Uint64()
 }
 
-func isAddress(id KadId) bool {
-	for i := 8; i < len(id.val); i++ {
-		if id.val[i] != 0 {
-			return true
+func (self KadId) isPseudoKadId() bool {
+	for i := 8; i < len(self.val); i++ {
+		if self.val[i] != 0 {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
-func KIdFromUint64(data uint64) KadId {
-	nonceBs := make([]byte, 8)
-	binary.LittleEndian.PutUint64(nonceBs, data)
+func PseudoKadIdFromUint64(data uint64) KadId {
 	id := common.ADDRESS_EMPTY
-	copy(id[:8], nonceBs[:])
+	binary.LittleEndian.PutUint64(id[:], data)
 	return KadId{
 		val: id,
 	}
@@ -119,6 +118,9 @@ func (this *KadKeyId) Deserialization(source *common.ZeroCopySource) error {
 	if err != nil {
 		return err
 	}
+	if !validatePublicKey(pub) {
+		return errors.New("invalid kad public key")
+	}
 	this.PublicKey = pub
 	this.Id = kadIdFromPubkey(pub)
 	return nil
@@ -132,7 +134,7 @@ func RandKadKeyId() *KadKeyId {
 	var acc *account.Account
 	for {
 		acc = account.NewAccount("")
-		if ValidatePublicKey(acc.PublicKey) {
+		if validatePublicKey(acc.PublicKey) {
 			break
 		}
 	}
@@ -143,7 +145,7 @@ func RandKadKeyId() *KadKeyId {
 	}
 }
 
-func ValidatePublicKey(pubKey keypair.PublicKey) bool {
+func validatePublicKey(pubKey keypair.PublicKey) bool {
 	pub := keypair.SerializePublicKey(pubKey)
 	res := sha256.Sum256(pub)
 	hash := sha256.Sum256(res[:])
