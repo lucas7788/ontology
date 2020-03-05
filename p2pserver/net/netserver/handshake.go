@@ -64,7 +64,7 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 	}
 
 	// 3. update kadId
-	if receivedVersion.P.SoftVersion > "v1.9.0" && false {
+	if receivedVersion.P.SoftVersion > "v1.9.0" || true {
 		log.Info("*******come in dht*******")
 		msg := msgpack.NewUpdateKadKeyId(netServer)
 		err = sendMsg(conn, msg)
@@ -167,7 +167,7 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 
 	// 3. read update kadkey id
 	kid := kbucket.PseudoKadIdFromUint64(version.P.Nonce)
-	if version.P.SoftVersion > "v1.9.0" && false {
+	if version.P.SoftVersion > "v1.9.0" || true {
 		msg, _, err := types.ReadMessage(conn)
 		if err != nil {
 			log.Errorf("[HandshakeServer] ReadMessage failed, error: %s", err)
