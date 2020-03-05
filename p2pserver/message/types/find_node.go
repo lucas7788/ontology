@@ -46,14 +46,7 @@ func (req *FindNodeReq) CmdType() string {
 
 // Deserialization message payload
 func (req *FindNodeReq) Deserialization(source *common.ZeroCopySource) error {
-	id, eof := source.NextAddress()
-	if eof {
-		return errRead
-	}
-
-	req.TargetID = id
-
-	return nil
+	return req.TargetID.Deserialization(source)
 }
 
 type PeerAddr struct {
@@ -70,7 +63,7 @@ type FindNodeResp struct {
 
 // Serialization message payload
 func (resp FindNodeResp) Serialization(sink *common.ZeroCopySink) {
-	sink.WriteAddress(resp.TargetID)
+	resp.TargetID.Serialization(sink)
 	sink.WriteBool(resp.Success)
 	sink.WriteString(resp.Address)
 	sink.WriteUint32(uint32(len(resp.CloserPeers)))
@@ -87,11 +80,10 @@ func (resp *FindNodeResp) CmdType() string {
 
 // Deserialization message payload
 func (resp *FindNodeResp) Deserialization(source *common.ZeroCopySource) error {
-	targetID, eof := source.NextAddress()
-	if eof {
-		return errRead
+	err := resp.TargetID.Deserialization(source)
+	if err != nil {
+		return err
 	}
-	resp.TargetID = targetID
 
 	succ, _, eof := source.NextBool()
 	if eof {

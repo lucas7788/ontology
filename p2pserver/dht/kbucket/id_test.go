@@ -27,7 +27,7 @@ import (
 func TestConvertPeerID(t *testing.T) {
 	start := time.Now().Unix()
 	fmt.Println("start:", start)
-	GenerateRandomId()
+	RandKadKeyId()
 
 	end := time.Now().Unix()
 	fmt.Println("end:", end)

@@ -28,7 +28,7 @@ import (
 )
 
 func genpeerID() *KadKeyId {
-	id := GenerateRandomId()
+	id := RandKadKeyId()
 	return id
 }
 
@@ -80,11 +80,11 @@ func TestRefreshAndGetTrackedCpls(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(1, local)
+	rt := NewRoutingTable(1, local.Id)
 
 	// add cpl's for tracking
 	for cpl := uint(0); cpl < maxCplForRefresh; cpl++ {
-		peerID := rt.GenRandKID(cpl)
+		peerID := rt.GenRandKadId(cpl)
 		rt.ResetCplRefreshedAtForID(peerID, time.Now())
 	}
 
@@ -106,19 +106,18 @@ func TestGenRandPeerID(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(1, local)
+	rt := NewRoutingTable(1, local.Id)
 
 	// generate above maxCplForRefresh fails
-	p, err := rt.GenRandPeerID(maxCplForRefresh + 1)
-	require.Error(t, err)
+	p := rt.GenRandKadId(maxCplForRefresh + 1)
 	require.Empty(t, p)
 
 	// test generate rand peer ID
 	for cpl := uint(0); cpl <= maxCplForRefresh; cpl++ {
 		for i := 0; i < 10000; i++ {
-			peerID := rt.GenRandKID(1)
+			peerID := rt.GenRandKadId(1)
 
-			require.True(t, uint(CommonPrefixLen(peerID, rt.local.Id)) == cpl, "failed for cpl=%d", cpl)
+			require.True(t, uint(CommonPrefixLen(peerID, rt.local)) == cpl, "failed for cpl=%d", cpl)
 		}
 	}
 }
@@ -127,7 +126,7 @@ func TestTableCallbacks(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, local)
+	rt := NewRoutingTable(10, local.Id)
 
 	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
@@ -142,7 +141,7 @@ func TestTableCallbacks(t *testing.T) {
 		delete(pset, p)
 	}
 
-	rt.Update(&KPId{
+	_ = rt.Update(&KPId{
 		KId: peers[0].Id,
 		PId: uint64(0),
 	})
@@ -156,7 +155,7 @@ func TestTableCallbacks(t *testing.T) {
 	}
 
 	for _, p := range peers {
-		rt.Update(&KPId{
+		_ = rt.Update(&KPId{
 			KId: p.Id,
 			PId: uint64(9),
 		})
@@ -180,7 +179,7 @@ func TestTableUpdate(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, local)
+	rt := NewRoutingTable(10, local.Id)
 
 	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
@@ -189,7 +188,7 @@ func TestTableUpdate(t *testing.T) {
 
 	// Testing Update
 	for i := 0; i < 10000; i++ {
-		rt.Update(&KPId{
+		_ = rt.Update(&KPId{
 			KId: peers[rand.Intn(len(peers))].Id,
 			PId: uint64(i),
 		})
@@ -208,12 +207,12 @@ func TestTableFind(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, local)
+	rt := NewRoutingTable(10, local.Id)
 
 	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 5; i++ {
 		peers[i] = genpeerID()
-		rt.Update(&KPId{
+		_ = rt.Update(&KPId{
 			KId: peers[i].Id,
 			PId: uint64(i),
 		})
@@ -230,7 +229,7 @@ func TestTableEldestPreferred(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(10, local)
+	rt := NewRoutingTable(10, local.Id)
 
 	// generate size + 1 peers to saturate a bucket
 	peers := make([]*KadKeyId, 15)
@@ -270,12 +269,12 @@ func TestTableFindMultiple(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	rt := NewRoutingTable(20, local)
+	rt := NewRoutingTable(20, local.Id)
 
 	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 18; i++ {
 		peers[i] = genpeerID()
-		rt.Update(&KPId{
+		_ = rt.Update(&KPId{
 			KId: peers[i].Id,
 			PId: uint64(i),
 		})
@@ -307,12 +306,12 @@ func TestTableFindMultipleBuckets(t *testing.T) {
 	local := genpeerID()
 	localID := local
 
-	rt := NewRoutingTable(5, localID)
+	rt := NewRoutingTable(5, local.Id)
 
 	peers := make([]*KadKeyId, 100)
 	for i := 0; i < 100; i++ {
 		peers[i] = genpeerID()
-		rt.Update(&KPId{
+		_ = rt.Update(&KPId{
 			KId: peers[i].Id,
 			PId: uint64(i),
 		})
@@ -424,7 +423,7 @@ func TestTableMultithreaded(t *testing.T) {
 	t.Parallel()
 
 	local := genpeerID()
-	tab := NewRoutingTable(20, local)
+	tab := NewRoutingTable(20, local.Id)
 	var peers []*KadKeyId
 	for i := 0; i < 500; i++ {
 		peers = append(peers, genpeerID())
@@ -434,7 +433,7 @@ func TestTableMultithreaded(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			n := rand.Intn(len(peers))
-			tab.Update(&KPId{
+			_ = tab.Update(&KPId{
 				KId: peers[n].Id,
 				PId: uint64(i),
 			})
@@ -445,7 +444,7 @@ func TestTableMultithreaded(t *testing.T) {
 	go func() {
 		for i := 0; i < 1000; i++ {
 			n := rand.Intn(len(peers))
-			tab.Update(&KPId{
+			_ = tab.Update(&KPId{
 				KId: peers[n].Id,
 				PId: uint64(i),
 			})
@@ -468,7 +467,7 @@ func TestTableMultithreaded(t *testing.T) {
 func BenchmarkUpdates(b *testing.B) {
 	b.StopTimer()
 	local := genpeerID()
-	tab := NewRoutingTable(20, local)
+	tab := NewRoutingTable(20, local.Id)
 
 	var peers []*KadKeyId
 	for i := 0; i < b.N; i++ {
@@ -477,7 +476,7 @@ func BenchmarkUpdates(b *testing.B) {
 
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		tab.Update(&KPId{
+		_ = tab.Update(&KPId{
 			KId: peers[i].Id,
 			PId: uint64(i),
 		})
@@ -487,12 +486,12 @@ func BenchmarkUpdates(b *testing.B) {
 func BenchmarkFinds(b *testing.B) {
 	b.StopTimer()
 	local := genpeerID()
-	tab := NewRoutingTable(20, local)
+	tab := NewRoutingTable(20, local.Id)
 
 	var peers []*KadKeyId
 	for i := 0; i < b.N; i++ {
 		peers = append(peers, genpeerID())
-		tab.Update(&KPId{
+		_ = tab.Update(&KPId{
 			KId: peers[i].Id,
 			PId: uint64(i),
 		})

@@ -19,27 +19,60 @@
 package kbucket
 
 import (
+	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
+	"io"
+	"math/bits"
+
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology/account"
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/types"
-	ks "github.com/ontio/ontology/p2pserver/dht/kbucket/keyspace"
-	"io"
 )
 
 var Difficulty = 18 //bit
 
-type KadId = common.Address
+type KadId struct {
+	val common.Address
+}
+
+func (self KadId) Serialization(sink *common.ZeroCopySink) {
+	sink.WriteAddress(self.val)
+}
+
+func (self *KadId) Deserialization(source *common.ZeroCopySource) error {
+	val, eof := source.NextAddress()
+	if eof {
+		return io.ErrUnexpectedEOF
+	}
+	self.val = val
+	return nil
+}
+
+func (self KadId)ToHexString() string {
+	return self.val.ToHexString()
+}
 
 type KadKeyId struct {
 	PublicKey keypair.PublicKey
+
 	Id        KadId
+}
+
+func (self KadId) GenRandKadId(prefix uint) KadId {
+	var kad KadId
+	if prefix > uint(len(self.val[:])) {
+		prefix = uint(len(self.val[:]))
+	}
+	_, _ = rand.Read(kad.val[:])
+	copy(kad.val[:prefix], self.val[:prefix])
+	return kad
 }
 
 func (this *KadKeyId) Serialization(sink *common.ZeroCopySink) {
 	sink.WriteVarBytes(keypair.SerializePublicKey(this.PublicKey))
-	sink.WriteAddress(this.Id)
 }
 
 func (this *KadKeyId) Deserialization(source *common.ZeroCopySource) error {
@@ -54,42 +87,34 @@ func (this *KadKeyId) Deserialization(source *common.ZeroCopySource) error {
 	if err != nil {
 		return err
 	}
-	this.PublicKey = pub
-	this.Id, eof = source.NextAddress()
-	if eof {
-		return io.ErrUnexpectedEOF
+	if !validatePublicKey(pub) {
+		return fmt.Errorf("invalid kad public key")
 	}
+	this.PublicKey = pub
+	this.Id = kadIdFromPubkey(pub)
 	return nil
 }
 
-func KadKeyIdFromPubkey(pubKey keypair.PublicKey) *KadKeyId {
-	addr := types.AddressFromPubKey(pubKey)
-	return &KadKeyId{
-		PublicKey: pubKey,
-		Id:        addr,
-	}
+func kadIdFromPubkey(pubKey keypair.PublicKey) KadId {
+	return KadId{val:types.AddressFromPubKey(pubKey)}
 }
 
-func KadIdFromBytes(addr []byte) (KadId, error) {
-	return common.AddressParseFromBytes(addr)
-}
-
-func GenerateRandomId() *KadKeyId {
+func RandKadKeyId() *KadKeyId {
 	var acc *account.Account
 	for {
 		acc = account.NewAccount("")
-		if ValidatePublicKey(acc.PublicKey) {
+		if validatePublicKey(acc.PublicKey) {
 			break
 		}
 	}
-	addr := types.AddressFromPubKey(acc.PublicKey)
+	kid := kadIdFromPubkey(acc.PublicKey)
 	return &KadKeyId{
 		PublicKey: acc.PublicKey,
-		Id:        addr,
+		Id:        kid,
 	}
 }
 
-func ValidatePublicKey(pubKey keypair.PublicKey) bool {
+func validatePublicKey(pubKey keypair.PublicKey) bool {
 	pub := keypair.SerializePublicKey(pubKey)
 	res := sha256.Sum256(pub)
 	hash := sha256.Sum256(res[:])
@@ -109,26 +134,36 @@ func ValidatePublicKey(pubKey keypair.PublicKey) bool {
 	return true
 }
 
-func xor(a, b KadId) KadId {
-	id, _ := KadIdFromBytes(ks.XOR(a[:], b[:]))
-	return id
+func (self KadId) distance(b KadId) KadId {
+	var c KadId
+	for i := 0; i < len(self.val); i++ {
+		c.val[i] = self.val[i] ^ b.val[i]
+	}
+
+	return c
 }
 
-// Closer returns true if a is closer to key than b is
-func Closer(a, b, key KadId) bool {
-	adist := xor(a, key)
-	bdist := xor(b, key)
+// Closer returns true if a is closer to self than b is
+func (self KadId)Closer(a, b KadId) bool {
+	adist := self.distance(a)
+	bdist := self.distance(b)
 
-	return less(adist, bdist)
-}
-
-func less(id, other KadId) bool {
-	a := ks.Key{Space: ks.XORKeySpace, Bytes: id[:]}
-	b := ks.Key{Space: ks.XORKeySpace, Bytes: other[:]}
-	return a.Less(b)
+	return bytes.Compare(adist.val[:], bdist.val[:]) < 0
 }
 
 // CommonPrefixLen(cpl) calculate two ID's xor prefix 0
 func CommonPrefixLen(a, b KadId) int {
-	return ks.ZeroPrefixLen(ks.XOR(a[:], b[:]))
+	dis := a.distance(b)
+	return zeroPrefixLen(dis.val[:])
+}
+
+// ZeroPrefixLen returns the number of consecutive zeroes in a byte slice.
+func zeroPrefixLen(id []byte) int {
+	for i, b := range id {
+		if b != 0 {
+			return i*8 + bits.LeadingZeros8(uint8(b))
+		}
+	}
+
+	return len(id) * 8
 }

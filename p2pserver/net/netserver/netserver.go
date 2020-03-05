@@ -668,9 +668,9 @@ func (ns *NetServer) refreshCPL() {
 	for {
 		select {
 		case <-tick.C:
-			for curCPL := range ns.dht.RoutingTable().Buckets {
+			for curCPL := range ns.dht.RouteTable().Buckets {
 				log.Debugf("[dht] start to refresh bucket: %d", curCPL)
-				randPeer := ns.dht.RoutingTable().GenRandKID(uint(curCPL))
+				randPeer := ns.dht.RouteTable().GenRandKadId(uint(curCPL))
 				closer := ns.dht.BetterPeers(randPeer, dht.AlphaValue)
 				for _, pid := range closer {
 					log.Debugf("[dht] find closr peer %d", pid)

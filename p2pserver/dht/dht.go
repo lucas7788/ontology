@@ -38,13 +38,13 @@ var AlphaValue = 3
 var KID_PID = make(map[string]uint64) //kid -> pid
 
 type DHT struct {
-	self  *kb.KadKeyId
-	birth time.Time // When this peer started up
+	localKeyId *kb.KadKeyId
+	birth      time.Time // When this peer started up
 
 	ctx context.Context
 
-	bucketSize   int
-	routingTable *kb.RoutingTable // Array of routing tables for differently distanced nodes
+	bucketSize int
+	routeTable *kb.RouteTable // Array of routing tables for differently distanced nodes
 
 	AutoRefresh           bool
 	RtRefreshQueryTimeout time.Duration
@@ -56,9 +56,9 @@ func (dht *DHT) Context() context.Context {
 	return dht.ctx
 }
 
-// RoutingTable return dht's routingTable
-func (dht *DHT) RoutingTable() *kb.RoutingTable {
-	return dht.routingTable
+// RouteTable return dht's routeTable
+func (dht *DHT) RouteTable() *kb.RouteTable {
+	return dht.routeTable
 }
 
 // New creates a new DHT with the specified host and options.
@@ -71,8 +71,8 @@ func New(ctx context.Context) (*DHT, error) {
 }
 
 func makeDHT(ctx context.Context, bucketSize int) *DHT {
-	self := kb.GenerateRandomId()
-	rt := kb.NewRoutingTable(bucketSize, self)
+	keyId := kb.RandKadKeyId()
+	rt := kb.NewRoutingTable(bucketSize, keyId.Id)
 
 	rt.PeerAdded = func(p kb.KadId) {
 		log.Debugf("dht: peer: %d added to dht", p)
@@ -83,11 +83,11 @@ func makeDHT(ctx context.Context, bucketSize int) *DHT {
 	}
 
 	dht := &DHT{
-		self:         self,
-		ctx:          ctx,
-		birth:        time.Now(),
-		routingTable: rt,
-		bucketSize:   bucketSize,
+		localKeyId: keyId,
+		ctx:        ctx,
+		birth:      time.Now(),
+		routeTable: rt,
+		bucketSize: bucketSize,
 
 		AutoRefresh: true,
 	}
@@ -95,28 +95,28 @@ func makeDHT(ctx context.Context, bucketSize int) *DHT {
 	return dht
 }
 
-// Update signals the routingTable to Update its last-seen status
+// Update signals the routeTable to Update its last-seen status
 // on the given peer.
 func (dht *DHT) Update(peer *kb.KPId) bool {
-	err := dht.routingTable.Update(peer)
+	err := dht.routeTable.Update(peer)
 
 	return err == nil
 }
 
 func (dht *DHT) Remove(peer kb.KadId) {
-	dht.routingTable.Remove(peer)
+	dht.routeTable.Remove(peer)
 }
 
 func (dht *DHT) GetKadKeyId() *kb.KadKeyId {
-	return dht.self
+	return dht.localKeyId
 }
 
 func (dht *DHT) BetterPeers(id kb.KadId, count int) []*kb.KPId {
-	closer := dht.routingTable.NearestPeers(id, count)
+	closer := dht.routeTable.NearestPeers(id, count)
 	filtered := make([]*kb.KPId, 0, len(closer))
 	// don't include self and target id
 	for _, curID := range closer {
-		if curID.KId == dht.self.Id {
+		if curID.KId == dht.localKeyId.Id {
 			continue
 		}
 		if curID.KId == id {

@@ -52,7 +52,7 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 		return fmt.Errorf("remote peer is nil")
 	}
 
-	if versionRaw.P.SoftVersion > "v1.8.2-0-gda60191a" && false {
+	if versionRaw.P.SoftVersion > "v1.9.0" && false {
 		log.Info("*******come in dht*******")
 		msg := msgpack.NewUpdateKadKeyId(netServer)
 		sink.Reset()
@@ -70,9 +70,6 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 			return fmt.Errorf("")
 		}
 		kadKeyId := msg.(*types.UpdateKadId)
-		if !kbucket.ValidatePublicKey(kadKeyId.KadKeyId.PublicKey) {
-			return fmt.Errorf("validate publickey failed")
-		}
 		if !netServer.UpdateDHT(&kbucket.KPId{
 			KId: kadKeyId.KadKeyId.Id,
 			PId: netServer.GetPeerFromAddr(addr).GetID(),
@@ -128,7 +125,7 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 	}
 
 	// 3. read update kadkey id
-	if version.P.SoftVersion >= "v1.8.2-0-gda60191a" && false {
+	if version.P.SoftVersion > "v1.9.0" && false {
 		msg, _, err := types.ReadMessage(conn)
 		if err != nil {
 			log.Errorf("[HandshakeServer] ReadMessage failed, error: %s", err)
@@ -138,10 +135,6 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 			return fmt.Errorf("[HandshakeServer] expected update kadkeyid message")
 		}
 		kadkeyId := msg.(*types.UpdateKadId)
-		if !kbucket.ValidatePublicKey(kadkeyId.KadKeyId.PublicKey) {
-			log.Errorf("[HandshakeServer] ValidatePublicKey failed, kadId:%s", kadkeyId.KadKeyId.Id.ToHexString())
-			return fmt.Errorf("[HandshakeServer] ValidatePublicKey failed, kadId:%s", kadkeyId.KadKeyId.Id.ToHexString())
-		}
 		remotePeer := netServer.GetPeerFromAddr(conn.RemoteAddr().String())
 		remotePeer.SetKId(kadkeyId.KadKeyId.Id)
 		netServer.dht.Update(&kbucket.KPId{
@@ -188,7 +181,7 @@ func send(conn net.Conn, rawPacket []byte) error {
 	if nCount == 0 {
 		nCount = 1
 	}
-	conn.SetWriteDeadline(time.Now().Add(time.Duration(nCount*common.WRITE_DEADLINE) * time.Second))
+	_ = conn.SetWriteDeadline(time.Now().Add(time.Duration(nCount*common.WRITE_DEADLINE) * time.Second))
 	_, err := conn.Write(rawPacket)
 	if err != nil {
 		log.Infof("[handshake]error sending messge to %s :%s", conn.LocalAddr(), err.Error())

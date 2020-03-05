@@ -19,6 +19,7 @@
 package kbucket
 
 import (
+	"bytes"
 	"container/list"
 	"sort"
 )
@@ -38,14 +39,14 @@ type peerDistanceSorter struct {
 func (pds *peerDistanceSorter) Len() int      { return len(pds.peers) }
 func (pds *peerDistanceSorter) Swap(a, b int) { pds.peers[a], pds.peers[b] = pds.peers[b], pds.peers[a] }
 func (pds *peerDistanceSorter) Less(a, b int) bool {
-	return less(pds.peers[a].distance, pds.peers[b].distance)
+	return bytes.Compare(pds.peers[a].distance.val[:], pds.peers[b].distance.val[:]) < 0
 }
 
 // Append the peer.ID to the sorter's slice. It may no longer be sorted.
 func (pds *peerDistanceSorter) appendPeer(p *KPId) {
 	pds.peers = append(pds.peers, peerDistance{
 		p:        p,
-		distance: xor(pds.target, p.KId),
+		distance: pds.target.distance(p.KId),
 	})
 }
 
