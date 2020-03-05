@@ -379,8 +379,7 @@ func (this *NetServer) startNetAccept(listener net.Listener) {
 			return
 		}
 
-		log.Debug("[p2p]remote sync node connect with ",
-			conn.RemoteAddr(), conn.LocalAddr())
+		log.Debug("[p2p]remote sync node connect with ", conn.RemoteAddr(), conn.LocalAddr())
 		if !this.AddrValid(conn.RemoteAddr().String()) {
 			log.Warnf("[p2p]remote %s not in reserved list, close it ", conn.RemoteAddr())
 			conn.Close()
