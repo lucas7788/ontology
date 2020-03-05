@@ -3,7 +3,6 @@ package netserver
 import (
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/ontio/ontology/p2pserver/message/msg_pack"
 	"github.com/ontio/ontology/p2pserver/message/types"
 	"github.com/ontio/ontology/p2pserver/peer"
+	"strconv"
 )
 
 func HandshakeClient(netServer *NetServer, conn net.Conn) error {
@@ -37,12 +37,17 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 		return err
 	}
 	if msg.CmdType() != common.VERSION_TYPE {
-		return fmt.Errorf("")
+		return fmt.Errorf("expected version message, but got message type: %s", msg.CmdType())
 	}
-	// 3. update kadId
-	recvedVersion := msg.(*types.Version)
 
-	if recvedVersion.P.SoftVersion > "v1.9.0" && false {
+	receivedVersion := msg.(*types.Version)
+	remoteAddr := conn.RemoteAddr().String()
+	if err = isHandWithSelf(netServer, remoteAddr, receivedVersion); err != nil {
+		return err
+	}
+
+	// 3. update kadId
+	if receivedVersion.P.SoftVersion > "v1.9.0" && false {
 		log.Info("*******come in dht*******")
 		msg := msgpack.NewUpdateKadKeyId(netServer)
 		err = sendMsg(conn, msg)
@@ -74,12 +79,12 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 	}
 
 	// Obsolete node
-	err = removeOldPeer(netServer, recvedVersion.P.Nonce, conn.RemoteAddr().String())
+	err = removeOldPeer(netServer, receivedVersion.P.Nonce, conn.RemoteAddr().String())
 	if err != nil {
 		return err
 	}
 
-	remotePeer, err := createPeer(netServer, recvedVersion, conn)
+	remotePeer, err := createPeer(netServer, receivedVersion, conn)
 	if err != nil {
 		return err
 	}
@@ -97,11 +102,26 @@ func HandshakeClient(netServer *NetServer, conn net.Conn) error {
 
 	if netServer.pid != nil {
 		input := &common.AppendPeerID{
-			ID: recvedVersion.P.Nonce,
+			ID: receivedVersion.P.Nonce,
 		}
 		netServer.pid.Tell(input)
 	}
 
+	return nil
+}
+
+func isHandWithSelf(netServer *NetServer, remoteAddr string, receivedVersion *types.Version) error {
+	addrIp, err := common.ParseIPAddr(remoteAddr)
+	if err != nil {
+		log.Warn(err)
+		return err
+	}
+	nodeAddr := addrIp + ":" + strconv.Itoa(int(receivedVersion.P.SyncPort))
+	if receivedVersion.P.Nonce == netServer.GetID() {
+		log.Warn("[createPeer]the node handshake with itself:", remoteAddr)
+		netServer.SetOwnAddress(nodeAddr)
+		return fmt.Errorf("[createPeer]the node handshake with itself: %s", remoteAddr)
+	}
 	return nil
 }
 
@@ -116,6 +136,10 @@ func HandshakeServer(netServer *NetServer, conn net.Conn) error {
 		return fmt.Errorf("[HandshakeServer] expected version message")
 	}
 	version := msg.(*types.Version)
+	if err = isHandWithSelf(netServer, conn.RemoteAddr().String(), version); err != nil {
+		return err
+	}
+
 	// 2. sendMsg version
 	ver := msgpack.NewVersion(netServer, ledger.DefLedger.GetCurrentBlockHeight())
 	err = sendMsg(conn, ver)
@@ -227,19 +251,6 @@ func checkReservedPeers(remoteAddr string) error {
 
 func createPeer(p2p *NetServer, version *types.Version, conn net.Conn) (*peer.Peer, error) {
 	log.Infof("remoteAddr: %s, localAddr: %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
-	remoteAddr := conn.RemoteAddr().String()
-	addrIp, err := common.ParseIPAddr(remoteAddr)
-	if err != nil {
-		log.Warn(err)
-		return nil, err
-	}
-
-	nodeAddr := addrIp + ":" + strconv.Itoa(int(version.P.SyncPort))
-	if version.P.Nonce == p2p.GetID() {
-		log.Warn("[createPeer]the node handshake with itself:", remoteAddr)
-		p2p.SetOwnAddress(nodeAddr)
-		return nil, fmt.Errorf("[createPeer]the node handshake with itself: %s", remoteAddr)
-	}
 
 	remotePeer := peer.NewPeer()
 	if version.P.Cap[common.HTTP_INFO_FLAG] == 0x01 {
