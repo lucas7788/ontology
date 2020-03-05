@@ -21,7 +21,6 @@ package netserver
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -112,13 +111,6 @@ func (this *NetServer) init() error {
 
 	this.base.SetRelay(true)
 
-	rand.Seed(time.Now().UnixNano())
-
-	id := rand.Uint64()
-
-	this.base.SetID(id)
-
-	log.Infof("[p2p]init peer ID to %d", this.base.GetID())
 	this.Np = &peer.NbrPeers{}
 	this.Np.Init()
 
@@ -132,6 +124,9 @@ func (this *NetServer) init() error {
 	}
 	this.dht = dtable
 
+	this.base.SetID(dtable.GetKadKeyId().Id)
+
+	log.Infof("[p2p]init peer ID to %d", this.base.GetID())
 	this.doRefresh()
 
 	return nil
@@ -150,6 +145,10 @@ func (this *NetServer) GetVersion() uint32 {
 //GetId return peer`s id
 func (this *NetServer) GetID() uint64 {
 	return this.base.GetID()
+}
+
+func (this *NetServer) GetKId() kbucket.KadId {
+	return this.base.GetKId()
 }
 
 func (this *NetServer) GetKadKeyId() *kbucket.KadKeyId {
@@ -627,7 +626,7 @@ func (this *NetServer) SetOwnAddress(addr string) {
 	}
 }
 
-func (ns *NetServer) UpdateDHT(id *kbucket.KPId) bool {
+func (ns *NetServer) UpdateDHT(id kbucket.KadId) bool {
 	ns.dht.Update(id)
 	return true
 }
@@ -637,7 +636,7 @@ func (ns *NetServer) RemoveDHT(id kbucket.KadId) bool {
 	return true
 }
 
-func (ns *NetServer) BetterPeers(id kbucket.KadId, count int) []*kbucket.KPId {
+func (ns *NetServer) BetterPeers(id kbucket.KadId, count int) []kbucket.KadId {
 	return ns.dht.BetterPeers(id, count)
 }
 
@@ -656,7 +655,7 @@ func (ns *NetServer) findSelf() {
 			closer := ns.dht.BetterPeers(ns.dht.GetKadKeyId().Id, dht.AlphaValue)
 			for _, id := range closer {
 				log.Debugf("[dht] find closr peer %x", id)
-				ns.Send(ns.GetPeer(id.PId), msgpack.NewFindNodeReq(id.KId))
+				ns.Send(ns.GetPeer(id.ToUint64()), msgpack.NewFindNodeReq(id))
 			}
 		}
 	}
@@ -674,7 +673,7 @@ func (ns *NetServer) refreshCPL() {
 				closer := ns.dht.BetterPeers(randPeer, dht.AlphaValue)
 				for _, pid := range closer {
 					log.Debugf("[dht] find closr peer %d", pid)
-					ns.Send(ns.GetPeer(pid.PId), msgpack.NewFindNodeReq(pid.KId))
+					ns.Send(ns.GetPeer(pid.ToUint64()), msgpack.NewFindNodeReq(pid))
 				}
 			}
 		}

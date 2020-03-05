@@ -35,8 +35,6 @@ var KValue = 20
 // Alpha is the concurrency factor for asynchronous requests.
 var AlphaValue = 3
 
-var KID_PID = make(map[string]uint64) //kid -> pid
-
 type DHT struct {
 	localKeyId *kb.KadKeyId
 	birth      time.Time // When this peer started up
@@ -97,9 +95,8 @@ func makeDHT(ctx context.Context, bucketSize int) *DHT {
 
 // Update signals the routeTable to Update its last-seen status
 // on the given peer.
-func (dht *DHT) Update(peer *kb.KPId) bool {
+func (dht *DHT) Update(peer kb.KadId) bool {
 	err := dht.routeTable.Update(peer)
-
 	return err == nil
 }
 
@@ -111,15 +108,15 @@ func (dht *DHT) GetKadKeyId() *kb.KadKeyId {
 	return dht.localKeyId
 }
 
-func (dht *DHT) BetterPeers(id kb.KadId, count int) []*kb.KPId {
+func (dht *DHT) BetterPeers(id kb.KadId, count int) []kb.KadId {
 	closer := dht.routeTable.NearestPeers(id, count)
-	filtered := make([]*kb.KPId, 0, len(closer))
+	filtered := make([]kb.KadId, 0, len(closer))
 	// don't include self and target id
 	for _, curID := range closer {
-		if curID.KId == dht.localKeyId.Id {
+		if curID == dht.localKeyId.Id {
 			continue
 		}
-		if curID.KId == id {
+		if curID == id {
 			continue
 		}
 		filtered = append(filtered, curID)

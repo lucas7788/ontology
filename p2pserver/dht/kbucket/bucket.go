@@ -19,6 +19,7 @@
 package kbucket
 
 import (
+	"bytes"
 	"container/list"
 	"sync"
 )
@@ -29,23 +30,18 @@ type Bucket struct {
 	list *list.List
 }
 
-type KPId struct {
-	KId KadId
-	PId uint64
-}
-
 func newBucket() *Bucket {
 	b := new(Bucket)
 	b.list = list.New()
 	return b
 }
 
-func (b *Bucket) Peers() []*KPId {
+func (b *Bucket) Peers() []KadId {
 	b.lk.RLock()
 	defer b.lk.RUnlock()
-	ps := make([]*KPId, 0, b.list.Len())
+	ps := make([]KadId, 0, b.list.Len())
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		id := e.Value.(*KPId)
+		id := e.Value.(KadId)
 		ps = append(ps, id)
 	}
 	return ps
@@ -55,8 +51,8 @@ func (b *Bucket) Has(id KadId) bool {
 	b.lk.RLock()
 	defer b.lk.RUnlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KPId)
-		if curr.KId ==  id {
+		curr := e.Value.(*KadId)
+		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
 			return true
 		}
 	}
@@ -67,26 +63,26 @@ func (b *Bucket) Remove(id KadId) bool {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KPId)
-		if curr.KId == id {
+		curr := e.Value.(*KadId)
+		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
 			return true
 		}
 	}
 	return false
 }
 
-func (b *Bucket) MoveToFront(id *KPId) {
+func (b *Bucket) MoveToFront(id KadId) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 	for e := b.list.Front(); e != nil; e = e.Next() {
-		curr := e.Value.(*KPId)
-		if curr.KId == id.KId {
+		curr := e.Value.(*KadId)
+		if bytes.Compare(curr.val[:], id.val[:]) == 0 {
 			b.list.MoveToFront(e)
 		}
 	}
 }
 
-func (b *Bucket) PushFront(p *KPId) {
+func (b *Bucket) PushFront(p KadId) {
 	b.lk.Lock()
 	b.list.PushFront(p)
 	b.lk.Unlock()
@@ -119,8 +115,8 @@ func (b *Bucket) Split(cpl int, target KadId) *Bucket {
 	newbuck.list = out
 	e := b.list.Front()
 	for e != nil {
-		peerID := e.Value.(*KPId)
-		peerCPL := CommonPrefixLen(peerID.KId, target)
+		peerID := e.Value.(KadId)
+		peerCPL := CommonPrefixLen(peerID, target)
 		if peerCPL > cpl {
 			cur := e
 			out.PushBack(e.Value)

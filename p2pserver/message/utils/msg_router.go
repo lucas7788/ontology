@@ -114,8 +114,12 @@ func (this *MessageRouter) hookChan(channel chan *types.MsgPayload,
 						go handler(data, this.p2p, this.pid)
 					}
 				} else {
-					log.Warn("unknown message handler for the msg: ",
-						msgType)
+					if msgType == msgCommon.VERACK_TYPE || msgType == msgCommon.VERSION_TYPE {
+						log.Infof("receive message: %s", msgType)
+					} else {
+						log.Warn("unknown message handler for the msg: ",
+							msgType)
+					}
 				}
 			}
 		case <-stopCh:

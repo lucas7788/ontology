@@ -24,8 +24,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-
-	"github.com/ontio/ontology/common/log"
 )
 
 var ErrPeerRejectedHighLatency = errors.New("peer rejected; latency too high")
@@ -111,10 +109,8 @@ func (rt *RouteTable) ResetCplRefreshedAtForID(id KadId, newTime time.Time) {
 }
 
 // Update adds or moves the given peer to the front of its respective bucket
-func (rt *RouteTable) Update(p *KPId) error {
-	peerID := p.KId
+func (rt *RouteTable) Update(peerID KadId) error {
 	cpl := CommonPrefixLen(peerID, rt.local)
-
 	rt.tabLock.Lock()
 	defer rt.tabLock.Unlock()
 	bucketID := cpl
@@ -123,21 +119,21 @@ func (rt *RouteTable) Update(p *KPId) error {
 	}
 
 	bucket := rt.Buckets[bucketID]
-	if bucket.Has(p.KId) {
+	if bucket.Has(peerID) {
 		// If the peer is already in the table, move it to the front.
 		// This signifies that it it "more active" and the less active nodes
 		// Will as a result tend towards the back of the list
 
 		// the paper put more active node at tail, we put more active node at head
-		bucket.MoveToFront(p)
+		bucket.MoveToFront(peerID)
 		return nil
 	}
 
 	// We have enough space in the bucket (whether spawned or grouped).
 	if bucket.Len() < rt.bucketsize {
-		bucket.PushFront(p)
+		bucket.PushFront(peerID)
 		// call back notifier
-		rt.PeerAdded(p.KId)
+		rt.PeerAdded(peerID)
 		return nil
 	}
 
@@ -154,8 +150,8 @@ func (rt *RouteTable) Update(p *KPId) error {
 			// if after all the unfolding, we're unable to find room for this peer, scrap it.
 			return ErrPeerRejectedNoCapacity
 		}
-		bucket.PushFront(p)
-		rt.PeerAdded(p.KId)
+		bucket.PushFront(peerID)
+		rt.PeerAdded(peerID)
 		return nil
 	}
 
@@ -198,27 +194,17 @@ func (rt *RouteTable) nextBucket() {
 }
 
 // Find a specific peer by ID or return nil
-func (rt *RouteTable) Find(id KadId) (*KPId, bool) {
+
+func (rt *RouteTable) Find(id KadId) (KadId, bool) {
 	srch := rt.NearestPeers(id, 1)
-	if len(srch) == 0 || srch[0].KId != id {
-		return nil, false
+	if len(srch) == 0 || srch[0] != id {
+		return KadId{}, false
 	}
+
 	return srch[0], true
 }
 
-// NearestPeer returns a single peer that is nearest to the given ID
-func (rt *RouteTable) NearestPeer(id KadId) (*KPId, bool) {
-	peers := rt.NearestPeers(id, 1)
-	if len(peers) > 0 {
-		return peers[0], true
-	}
-
-	log.Debugf("NearestPeer: Returning nil, table size = %d", rt.Size())
-	return nil, false
-}
-
-// NearestPeers returns a list of the 'count' closest peers to the given ID
-func (rt *RouteTable) NearestPeers(id KadId, count int) []*KPId {
+func (rt *RouteTable) NearestPeers(id KadId, count int) []KadId {
 	// This is the number of bits _we_ share with the key. All peers in this
 	// bucket share cpl bits with us and will therefore share at least cpl+1
 	// bits with the given key. +1 because both the target and all peers in
@@ -274,7 +260,7 @@ func (rt *RouteTable) NearestPeers(id KadId, count int) []*KPId {
 		pds.peers = pds.peers[:count]
 	}
 
-	out := make([]*KPId, 0, pds.Len())
+	out := make([]KadId, 0, pds.Len())
 	for _, p := range pds.peers {
 		out = append(out, p.p)
 	}
@@ -293,9 +279,9 @@ func (rt *RouteTable) Size() int {
 	return tot
 }
 
-// ListPeers takes a RouteTable and returns a list of all peers from all buckets in the table.
-func (rt *RouteTable) ListPeers() []*KPId {
-	var peers []*KPId
+// ListPeers takes a RoutingTable and returns a list of all peers from all buckets in the table.
+func (rt *RouteTable) ListPeers() []KadId {
+	var peers []KadId
 	rt.tabLock.RLock()
 	for _, buck := range rt.Buckets {
 		peers = append(peers, buck.Peers()...)

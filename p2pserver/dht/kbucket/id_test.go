@@ -19,9 +19,11 @@
 package kbucket
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"testing"
 	"time"
-	"fmt"
 )
 
 func TestConvertPeerID(t *testing.T) {
@@ -34,4 +36,11 @@ func TestConvertPeerID(t *testing.T) {
 	fmt.Println(end - start)
 }
 
-
+func TestKIdToUint64(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		data := rand.Uint64()
+		id := KIdFromUint64(data)
+		data2 := KIdToUint64(id)
+		assert.Equal(t, data, data2)
+	}
+}

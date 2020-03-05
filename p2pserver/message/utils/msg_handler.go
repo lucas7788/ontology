@@ -154,11 +154,12 @@ func FindNodeHandle(data *msgTypes.MsgPayload, p2p p2p.P2P, pid *evtActor.PID, a
 	closer := p2p.BetterPeers(freq.TargetID, dht.AlphaValue)
 
 	paddrs := p2p.GetPeerStringAddr()
-	for _, pid := range closer {
-		if addr, ok := paddrs[pid.PId]; ok {
+	for _, kid := range closer {
+		pid := kid.ToUint64()
+		if addr, ok := paddrs[pid]; ok {
 			curAddr := msgTypes.PeerAddr{
 				Addr:   addr,
-				PeerID: pid.PId,
+				PeerID: pid,
 			}
 			fresp.CloserPeers = append(fresp.CloserPeers, curAddr)
 

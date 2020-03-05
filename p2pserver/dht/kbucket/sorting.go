@@ -26,7 +26,7 @@ import (
 
 // A helper struct to sort peers by their distance to the local node
 type peerDistance struct {
-	p        *KPId
+	p        KadId
 	distance KadId
 }
 
@@ -43,17 +43,17 @@ func (pds *peerDistanceSorter) Less(a, b int) bool {
 }
 
 // Append the peer.ID to the sorter's slice. It may no longer be sorted.
-func (pds *peerDistanceSorter) appendPeer(p *KPId) {
+func (pds *peerDistanceSorter) appendPeer(p KadId) {
 	pds.peers = append(pds.peers, peerDistance{
 		p:        p,
-		distance: pds.target.distance(p.KId),
+		distance: pds.target.distance(p),
 	})
 }
 
 // Append the peer.ID values in the list to the sorter's slice. It may no longer be sorted.
 func (pds *peerDistanceSorter) appendPeersFromList(l *list.List) {
 	for e := l.Front(); e != nil; e = e.Next() {
-		pds.appendPeer(e.Value.(*KPId))
+		pds.appendPeer(e.Value.(KadId))
 	}
 }
 
@@ -62,7 +62,7 @@ func (pds *peerDistanceSorter) sort() {
 }
 
 // Sort the given peers by their ascending distance from the target. A new slice is returned.
-func SortClosestPeers(peers []*KPId, target KadId) []*KPId {
+func SortClosestPeers(peers []KadId, target KadId) []KadId {
 	sorter := peerDistanceSorter{
 		peers:  make([]peerDistance, 0, len(peers)),
 		target: target,
@@ -71,7 +71,7 @@ func SortClosestPeers(peers []*KPId, target KadId) []*KPId {
 		sorter.appendPeer(p)
 	}
 	sorter.sort()
-	out := make([]*KPId, 0, sorter.Len())
+	out := make([]KadId, 0, sorter.Len())
 	for _, p := range sorter.peers {
 		out = append(out, p.p)
 	}

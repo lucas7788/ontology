@@ -36,7 +36,7 @@ import (
 
 // PeerCom provides the basic information of a peer
 type PeerCom struct {
-	id           uint64
+	id           kbucket.KadId
 	version      uint32
 	services     uint64
 	relay        bool
@@ -44,25 +44,41 @@ type PeerCom struct {
 	port         uint16
 	height       uint64
 	softVersion  string
-	kId          kbucket.KadId
+}
+
+func NewPeerCom(id kbucket.KadId,
+	version uint32,
+	services uint64,
+	relay bool,
+	httpInfoPort uint16,
+	port uint16,
+	height uint64,
+	softVersion string) PeerCom {
+	return PeerCom{
+		id:           id,
+		version:      version,
+		services:     services,
+		relay:        relay,
+		httpInfoPort: httpInfoPort,
+		port:         port,
+		height:       height,
+		softVersion:  softVersion,
+	}
 }
 
 // SetID sets a peer's id
-func (this *PeerCom) SetID(id uint64) {
+func (this *PeerCom) SetID(id kbucket.KadId) {
 	this.id = id
 }
 
 // GetID returns a peer's id
 func (this *PeerCom) GetID() uint64 {
-	return this.id
+	return this.id.ToUint64()
 }
 
+// GetID returns a peer's id
 func (this *PeerCom) GetKId() kbucket.KadId {
-	return this.kId
-}
-
-func (this *PeerCom) SetKId(id kbucket.KadId) {
-	this.kId = id
+	return this.id
 }
 
 // SetVersion sets a peer's version
@@ -230,14 +246,12 @@ func (this *Peer) GetID() uint64 {
 	return this.base.GetID()
 }
 
-//GetID return peer`s id
 func (this *Peer) GetKId() kbucket.KadId {
 	return this.base.GetKId()
 }
 
-//GetID return peer`s id
 func (this *Peer) SetKId(id kbucket.KadId) {
-	this.base.SetKId(id)
+	this.base.SetID(id)
 }
 
 //GetRelay return peer`s relay state
@@ -326,9 +340,9 @@ func (this *Peer) SetHttpInfoPort(port uint16) {
 //UpdateInfo update peer`s information
 func (this *Peer) UpdateInfo(t time.Time, version uint32, services uint64,
 	syncPort uint16, nonce uint64, relay uint8, height uint64, softVer string) {
-
 	this.Link.UpdateRXTime(t)
-	this.base.SetID(nonce)
+	id := kbucket.KIdFromUint64(nonce)
+	this.base.SetID(id)
 	this.base.SetVersion(version)
 	this.base.SetServices(services)
 	this.base.SetPort(syncPort)
@@ -341,3 +355,12 @@ func (this *Peer) UpdateInfo(t time.Time, version uint32, services uint64,
 	}
 	this.SetHeight(uint64(height))
 }
+
+//func NewPeer(t time.Time, version uint32, services uint64,
+//	syncPort uint16, nonce uint64, relay uint8, height uint64, softVer string) *Peer {
+//		id := kbucket.KIdFromUint64(nonce)
+//		peerCom := NewPeerCom(id, version,services, relay,true,syncPort,height,softVer)
+//		return &Peer{
+//
+//		}
+//}

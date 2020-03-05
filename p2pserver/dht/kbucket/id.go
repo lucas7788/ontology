@@ -22,14 +22,15 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
 	"io"
 	"math/bits"
 
+	"encoding/binary"
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology/account"
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/core/types"
+	"math/big"
 )
 
 var Difficulty = 18 //bit
@@ -51,14 +52,14 @@ func (self *KadId) Deserialization(source *common.ZeroCopySource) error {
 	return nil
 }
 
-func (self KadId)ToHexString() string {
+func (self *KadId) ToHexString() string {
 	return self.val.ToHexString()
 }
 
 type KadKeyId struct {
 	PublicKey keypair.PublicKey
 
-	Id        KadId
+	Id KadId
 }
 
 func (self KadId) GenRandKadId(prefix uint) KadId {
@@ -69,6 +70,37 @@ func (self KadId) GenRandKadId(prefix uint) KadId {
 	_, _ = rand.Read(kad.val[:])
 	copy(kad.val[:prefix], self.val[:prefix])
 	return kad
+}
+
+func (self KadId) ToUint64() uint64 {
+	if !isAddress(self) {
+		nonce := binary.LittleEndian.Uint64(self.val[:8])
+		return nonce
+	}
+	kid := new(big.Int).SetBytes(self.val[:])
+	u64Max := ^uint64(0)
+	uint64Max := new(big.Int).SetUint64(u64Max)
+	res := kid.Mod(kid, uint64Max)
+	return res.Uint64()
+}
+
+func isAddress(id KadId) bool {
+	for i := 8; i < len(id.val); i++ {
+		if id.val[i] != 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func KIdFromUint64(data uint64) KadId {
+	nonceBs := make([]byte, 8)
+	binary.LittleEndian.PutUint64(nonceBs, data)
+	id := common.ADDRESS_EMPTY
+	copy(id[:8], nonceBs[:])
+	return KadId{
+		val: id,
+	}
 }
 
 func (this *KadKeyId) Serialization(sink *common.ZeroCopySink) {
@@ -87,23 +119,20 @@ func (this *KadKeyId) Deserialization(source *common.ZeroCopySource) error {
 	if err != nil {
 		return err
 	}
-	if !validatePublicKey(pub) {
-		return fmt.Errorf("invalid kad public key")
-	}
 	this.PublicKey = pub
 	this.Id = kadIdFromPubkey(pub)
 	return nil
 }
 
 func kadIdFromPubkey(pubKey keypair.PublicKey) KadId {
-	return KadId{val:types.AddressFromPubKey(pubKey)}
+	return KadId{val: types.AddressFromPubKey(pubKey)}
 }
 
 func RandKadKeyId() *KadKeyId {
 	var acc *account.Account
 	for {
 		acc = account.NewAccount("")
-		if validatePublicKey(acc.PublicKey) {
+		if ValidatePublicKey(acc.PublicKey) {
 			break
 		}
 	}
@@ -114,7 +143,7 @@ func RandKadKeyId() *KadKeyId {
 	}
 }
 
-func validatePublicKey(pubKey keypair.PublicKey) bool {
+func ValidatePublicKey(pubKey keypair.PublicKey) bool {
 	pub := keypair.SerializePublicKey(pubKey)
 	res := sha256.Sum256(pub)
 	hash := sha256.Sum256(res[:])
@@ -144,7 +173,7 @@ func (self KadId) distance(b KadId) KadId {
 }
 
 // Closer returns true if a is closer to self than b is
-func (self KadId)Closer(a, b KadId) bool {
+func (self KadId) Closer(a, b KadId) bool {
 	adist := self.distance(a)
 	bdist := self.distance(b)
 
