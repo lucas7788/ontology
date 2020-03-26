@@ -1,0 +1,23 @@
+{
+  "testconfig":[
+    {
+      "contract" : "ogq-opt.wasm",
+      "balanceaddr": [
+        {
+          "address":"AbtTQJYKfQxq4UdygDsbLVjE8uRrJ2H3tP",
+          "balance":30
+        },
+        {
+          "address":"Ab1z3Sxy7ovn4AuScdmMh4PRMvcwCMzSNV",
+          "balance":20
+        }
+      ],
+      "testcase": [
+        [
+          {"env":{"witness":["ASWTacJZSwozPfjQAe4Bq2saMEZ3aEQK8j"]},"method":"set_owner", "param":"address:AbtTQJYKfQxq4UdygDsbLVjE8uRrJ2H3tP"},
+          {"env":{"witness":["AbtTQJYKfQxq4UdygDsbLVjE8uRrJ2H3tP"]},"method":"batch_add", "param":"Array:[bytearray:b413f47d13ee2fe6c845b2ee141af81de858df4ec549a58b7970bb96645bc8d2]"}
+        ]
+      ]
+    }
+  ]
+}

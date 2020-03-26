@@ -27,6 +27,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCompactMerkleTree_Append(t *testing.T) {
+	hasher := TreeHasher{}
+	leafs := []common.Uint256{hasher.hash_leaf([]byte{1}),
+		hasher.hash_leaf([]byte{2}),
+		hasher.hash_leaf([]byte{3})}
+	store, _ := NewFileHashStore("merkletree.db", 0)
+	tree := NewTree(0, nil, store)
+	if tree.Root() != sha256.Sum256(nil) {
+		t.Fatal("root error")
+	}
+	for i, item := range leafs {
+		if i == 1 {
+			break
+		}
+		tree.AppendHash(item)
+
+		fmt.Println(i, common.ToHexString(item.ToArray()))
+	}
+	root := tree.Root()
+	fmt.Println("root:", common.ToHexString(root.ToArray()))
+}
+
 func TestMerkleLeaf3(t *testing.T) {
 	hasher := TreeHasher{}
 	leafs := []common.Uint256{hasher.hash_leaf([]byte{1}),
