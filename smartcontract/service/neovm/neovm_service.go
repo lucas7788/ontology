@@ -257,7 +257,6 @@ const (
 var (
 	calledMap    *sync.Map //[string][]CalledInfo
 	calledMapLen *sync.Map //map[string]int
-	total        = uint32(0)
 	fileName     = "./called_file.txt"
 	defFile      *os.File
 )
@@ -317,23 +316,20 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 	size = size + 1
 	calledMap.Store(serviceName, calledInfo)
 	calledMapLen.Store(serviceName, size)
-	total = this.Height
-	if total%10000 == 0 {
-		if _, err := os.Stat(fileName); err != nil {
-
-		}
+	if this.Height%10000 == 0 {
+		log.Infof("current block height: %d", this.Height)
 		if defFile == nil {
 			var err error
 			if !PathExists(fileName) {
 				defFile, err = os.Create(fileName)
 				if err != nil {
-					log.Errorf("[watchSysCall] OpenFile error: %s", err)
+					log.Errorf("[watchSysCall] Create error: %s, current block height:%d", err, this.Height)
 					return
 				}
 			} else {
 				defFile, err = os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC|os.O_APPEND, 0644)
 				if err != nil {
-					log.Errorf("[watchSysCall] OpenFile error: %s", err)
+					log.Errorf("[watchSysCall] OpenFile error: %s, current block height:%d", err, this.Height)
 					return
 				}
 			}
@@ -342,17 +338,17 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 		calledMap.Range(func(key, value interface{}) bool {
 			keyBs, err := json.Marshal(key)
 			if err != nil {
-				log.Errorf("[watchSysCall] Marshal error: %s", err)
+				log.Errorf("[watchSysCall] Marshal error: %s,current block height:%d", err, this.Height)
 				return false
 			}
 			valBs, err := json.Marshal(value)
 			if err != nil {
-				log.Errorf("[watchSysCall] Marshal error: %s", err)
+				log.Errorf("[watchSysCall] Marshal error: %s,current block height:%d", err, this.Height)
 				return false
 			}
-			lineStr := fmt.Sprintf("%d:%s\n", total, string(keyBs))
+			lineStr := fmt.Sprintf("%d:%s\n", this.Height, string(keyBs))
 			w.WriteString(lineStr)
-			lineStr = fmt.Sprintf("%d:%s\n", total, string(valBs))
+			lineStr = fmt.Sprintf("%d:%s\n", this.Height, string(valBs))
 			w.WriteString(lineStr)
 			w.Flush()
 			log.Info("calledMap:", calledInfo)
