@@ -327,7 +327,7 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 					return
 				}
 			} else {
-				defFile, err = os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC|os.O_APPEND, 0644)
+				defFile, err = os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND, 0644)
 				if err != nil {
 					log.Errorf("[watchSysCall] OpenFile error: %s, current block height:%d", err, this.Height)
 					return
