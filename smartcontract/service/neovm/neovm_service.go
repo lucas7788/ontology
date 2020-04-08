@@ -292,13 +292,13 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 		calledMapLen = new(sync.Map)
 	}
 	var calledInfo []CalledInfo
-	if val, ok := calledMap.Load("serviceName"); ok || val == nil {
-		calledInfo = make([]CalledInfo, defaultLen)
+	if val, ok := calledMap.Load(serviceName); !ok || val == nil {
+		calledInfo = make([]CalledInfo, 0)
 	} else {
 		calledInfo = val.([]CalledInfo)
 	}
 	var size int
-	if val, ok := calledMapLen.Load("serviceName"); ok || val == nil {
+	if val, ok := calledMapLen.Load(serviceName); !ok || val == nil {
 		size = 0
 	} else {
 		size = val.(int)
@@ -309,7 +309,11 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 		TxHash:       txHash.ToHexString(),
 		ContractHash: this.ContextRef.CurrentContext().ContractAddress.ToHexString(),
 	}
-	calledInfo[size%defaultLen] = cinfo
+	if len(calledInfo) < defaultLen {
+		calledInfo = append(calledInfo, cinfo)
+	} else {
+		calledInfo[size%defaultLen] = cinfo
+	}
 	size = size + 1
 	calledMap.Store(serviceName, calledInfo)
 	calledMapLen.Store(serviceName, size)
