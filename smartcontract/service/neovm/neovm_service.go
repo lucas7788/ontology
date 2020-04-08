@@ -20,7 +20,15 @@ package neovm
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+
+	"sync"
+
+	"bufio"
+
 	scommon "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/core/store"
@@ -31,7 +39,6 @@ import (
 	"github.com/ontio/ontology/smartcontract/storage"
 	vm "github.com/ontio/ontology/vm/neovm"
 	vmty "github.com/ontio/ontology/vm/neovm/types"
-	"io"
 )
 
 var (
@@ -237,6 +244,24 @@ func (this *NeoVmService) Invoke() (interface{}, error) {
 	return nil, nil
 }
 
+type CalledInfo struct {
+	Height       uint32
+	TxHash       string
+	ContractHash string
+}
+
+const (
+	defaultLen = 10
+)
+
+var (
+	calledMap    *sync.Map //[string][]CalledInfo
+	calledMapLen *sync.Map //map[string]int
+	total        = uint32(0)
+	fileName     = "./called_file.txt"
+	defFile      *os.File
+)
+
 // SystemCall provide register service for smart contract to interaction with blockchain
 func (this *NeoVmService) SystemCall(engine *vm.Executor) error {
 	serviceName, err := engine.Context.OpReader.ReadVarString(vm.MAX_BYTEARRAY_SIZE)
@@ -247,6 +272,7 @@ func (this *NeoVmService) SystemCall(engine *vm.Executor) error {
 	if !ok {
 		return errors.NewErr(fmt.Sprintf("[SystemCall] the given service is not supported: %s", serviceName))
 	}
+	this.watchSysCall(serviceName)
 	price, err := GasPrice(this.GasTable, engine, serviceName)
 	if err != nil {
 		return err
@@ -260,6 +286,81 @@ func (this *NeoVmService) SystemCall(engine *vm.Executor) error {
 	return nil
 }
 
+func (this *NeoVmService) watchSysCall(serviceName string) {
+	if calledMap == nil {
+		calledMap = new(sync.Map)
+		calledMapLen = new(sync.Map)
+	}
+	var calledInfo []CalledInfo
+	if val, ok := calledMap.Load("serviceName"); ok || val == nil {
+		calledInfo = make([]CalledInfo, defaultLen)
+	} else {
+		calledInfo = val.([]CalledInfo)
+	}
+	var size int
+	if val, ok := calledMapLen.Load("serviceName"); ok || val == nil {
+		size = 0
+	} else {
+		size = val.(int)
+	}
+	txHash := this.Tx.Hash()
+	cinfo := CalledInfo{
+		Height:       this.Height,
+		TxHash:       txHash.ToHexString(),
+		ContractHash: this.ContextRef.CurrentContext().ContractAddress.ToHexString(),
+	}
+	calledInfo[size%defaultLen] = cinfo
+	size = size + 1
+	calledMap.Store(serviceName, calledInfo)
+	calledMapLen.Store(serviceName, size)
+	total = this.Height
+	if total%10000 == 0 {
+		if _, err := os.Stat(fileName); err != nil {
+
+		}
+		if defFile == nil {
+			var err error
+			if PathExists(fileName) {
+				defFile, err = os.Create(fileName)
+				if err != nil {
+					log.Errorf("[watchSysCall] OpenFile error: %s", err)
+					return
+				}
+			} else {
+				defFile, err = os.OpenFile(fileName, os.O_WRONLY|os.O_TRUNC|os.O_APPEND, 0644)
+				if err != nil {
+					log.Errorf("[watchSysCall] OpenFile error: %s", err)
+					return
+				}
+			}
+		}
+		w := bufio.NewWriter(defFile)
+		calledMap.Range(func(key, value interface{}) bool {
+			keyBs, err := json.Marshal(key)
+			if err != nil {
+				log.Errorf("[watchSysCall] Marshal error: %s", err)
+				return false
+			}
+			valBs, err := json.Marshal(value)
+			if err != nil {
+				log.Errorf("[watchSysCall] Marshal error: %s", err)
+				return false
+			}
+			lineStr := fmt.Sprintf("%d:%s\n", total, string(keyBs))
+			w.WriteString(lineStr)
+			lineStr = fmt.Sprintf("%d:%s\n", total, string(valBs))
+			w.WriteString(lineStr)
+			w.Flush()
+			log.Info("calledMap:", calledInfo)
+			return true
+		})
+	}
+}
+
+func PathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil || os.IsExist(err)
+}
 func (this *NeoVmService) GetNeoContract(address scommon.Address) ([]byte, error) {
 	dep, err := this.CacheDB.GetContract(address)
 	if err != nil {
