@@ -320,7 +320,7 @@ func (this *NeoVmService) watchSysCall(serviceName string) {
 		}
 		if defFile == nil {
 			var err error
-			if PathExists(fileName) {
+			if !PathExists(fileName) {
 				defFile, err = os.Create(fileName)
 				if err != nil {
 					log.Errorf("[watchSysCall] OpenFile error: %s", err)
