@@ -31,8 +31,9 @@ import (
 // BlockChainGetHeight put blockchain's height to vm stack
 func BlockChainGetHeight(service *NeoVmService, engine *vm.Executor) error {
 	blockHeight := service.Store.GetCurrentBlockHeight()
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockHeight:%d\n",
-		"BlockChainGetHeight", service.Height, blockHeight)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s, blockHeight:%d\n",
+		"BlockChainGetHeight", service.Height, txHash.ToHexString(), blockHeight)
 	err := engine.EvalStack.PushUint32(service.Store.GetCurrentBlockHeight())
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetHeight] GetHeight error!.")
@@ -42,7 +43,9 @@ func BlockChainGetHeight(service *NeoVmService, engine *vm.Executor) error {
 
 // BlockChainGetHeader put blockchain's header to vm stack
 func BlockChainGetHeader(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockChainGetHeader", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+		"BlockChainGetHeader", service.Height, txHash.ToHexString())
 	var (
 		header *types.Header
 		err    error
@@ -70,8 +73,8 @@ func BlockChainGetHeader(service *NeoVmService, engine *vm.Executor) error {
 		return errors.NewErr("[BlockChainGetHeader] data invalid.")
 	}
 	headerHash := header.Hash()
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, headerHash:%s\n",
-		"BlockChainGetHeader", service.Height, headerHash.ToHexString())
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s, headerHash:%s\n",
+		"BlockChainGetHeader", service.Height, txHash.ToHexString(), headerHash.ToHexString())
 	err = engine.EvalStack.PushAsInteropValue(header)
 	if err != nil {
 		return errors.NewErr("[BlockChainGetHeader] PushAsInteropValue error.")
@@ -81,7 +84,9 @@ func BlockChainGetHeader(service *NeoVmService, engine *vm.Executor) error {
 
 // BlockChainGetBlock put blockchain's block to vm stack
 func BlockChainGetBlock(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockChainGetBlock", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+		"BlockChainGetBlock", service.Height, txHash.ToHexString())
 	data, err := engine.EvalStack.PopAsBytes()
 	if err != nil {
 		return err
@@ -109,8 +114,8 @@ func BlockChainGetBlock(service *NeoVmService, engine *vm.Executor) error {
 		return errors.NewErr("[BlockChainGetBlock] data invalid.")
 	}
 	blockHash := block.Hash()
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockHash:%s\n",
-		"BlockChainGetBlock", service.Height, blockHash.ToHexString())
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s, blockHash:%s\n",
+		"BlockChainGetBlock", service.Height, txHash.ToHexString(), blockHash.ToHexString())
 	err = engine.EvalStack.PushAsInteropValue(block)
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetBlock] PushAsInteropValue error!.")
@@ -120,7 +125,9 @@ func BlockChainGetBlock(service *NeoVmService, engine *vm.Executor) error {
 
 // BlockChainGetTransaction put blockchain's transaction to vm stack
 func BlockChainGetTransaction(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockChainGetTransaction", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s\n",
+		"BlockChainGetTransaction", service.Height, txHash.ToHexString())
 	d, err := engine.EvalStack.PopAsBytes()
 	if err != nil {
 		return err
@@ -133,8 +140,8 @@ func BlockChainGetTransaction(service *NeoVmService, engine *vm.Executor) error 
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetTransaction] GetTransaction error!")
 	}
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txhash:%s\n",
-		"BlockChainGetTransaction", service.Height, hash.ToHexString())
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,serviceTxHash:%s,txhash:%s\n",
+		"BlockChainGetTransaction", service.Height, txHash.ToHexString(), hash.ToHexString())
 	err = engine.EvalStack.PushAsInteropValue(t)
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetTransaction] PushAsInteropValue error!")
@@ -144,7 +151,9 @@ func BlockChainGetTransaction(service *NeoVmService, engine *vm.Executor) error 
 
 // BlockChainGetContract put blockchain's contract to vm stack
 func BlockChainGetContract(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockChainGetContract", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+		"BlockChainGetContract", service.Height, txHash.ToHexString())
 	b, err := engine.EvalStack.PopAsBytes()
 	if err != nil {
 		return err
@@ -161,14 +170,16 @@ func BlockChainGetContract(service *NeoVmService, engine *vm.Executor) error {
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetContract] PushAsInteropValue error!")
 	}
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, contractAddress:%s\n",
-		"BlockChainGetContract", service.Height, address.ToHexString())
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s, contractAddress:%s\n",
+		"BlockChainGetContract", service.Height, txHash.ToHexString(), address.ToHexString())
 	return nil
 }
 
 // BlockChainGetTransactionHeight put transaction in block height to vm stack
 func BlockChainGetTransactionHeight(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockChainGetTransactionHeight", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+		"BlockChainGetTransactionHeight", service.Height, txHash.ToHexString())
 	d, err := engine.EvalStack.PopAsBytes()
 	if err != nil {
 		return err
@@ -181,8 +192,8 @@ func BlockChainGetTransactionHeight(service *NeoVmService, engine *vm.Executor) 
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetTransactionHeight] GetTransaction error!")
 	}
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s,txHeight:%d\n",
-		"BlockChainGetTransactionHeight", service.Height, hash.ToHexString(), h)
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,serviceTxHash:%s,txHash:%s,txHeight:%d\n",
+		"BlockChainGetTransactionHeight", service.Height, txHash.ToHexString(), hash.ToHexString(), h)
 	err = engine.EvalStack.PushUint32(h)
 	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[BlockChainGetTransactionHeight] PushInt64 error!")

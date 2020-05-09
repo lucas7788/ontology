@@ -29,7 +29,9 @@ import (
 
 // BlockGetTransactionCount put block's transactions count to vm stack
 func BlockGetTransactionCount(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockGetTransactionCount", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s\n",
+		"BlockGetTransactionCount", service.Height, txHash.ToHexString())
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
@@ -37,7 +39,8 @@ func BlockGetTransactionCount(service *NeoVmService, engine *vm.Executor) error 
 	if block, ok := i.Data.(*types.Block); ok {
 		val := vmtypes.VmValueFromInt64(int64(len(block.Transactions)))
 		blockHash := block.Hash()
-		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockhash:%s\n", "BlockGetTransactionCount", service.Height, blockHash.ToHexString())
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockhash:%s\n",
+			"BlockGetTransactionCount", service.Height, blockHash.ToHexString())
 		return engine.EvalStack.Push(val)
 	}
 	return errors.NewErr("[BlockGetTransactionCount] Wrong type ")
@@ -64,7 +67,9 @@ func BlockGetTransactions(service *NeoVmService, engine *vm.Executor) error {
 
 // BlockGetTransaction put block's transaction to vm stack
 func BlockGetTransaction(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockGetTransaction", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+		"BlockGetTransaction", service.Height, txHash.ToHexString())
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
@@ -78,8 +83,8 @@ func BlockGetTransaction(service *NeoVmService, engine *vm.Executor) error {
 			return errors.NewErr("[BlockGetTransaction] index out of bounds")
 		}
 		blockHash := block.Hash()
-		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockhash:%s\n",
-			"BlockGetTransaction", service.Height, blockHash.ToHexString())
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s, blockhash:%s\n",
+			"BlockGetTransaction", service.Height, txHash.ToHexString(), blockHash.ToHexString())
 		return engine.EvalStack.PushAsInteropValue(block.Transactions[index])
 
 	}

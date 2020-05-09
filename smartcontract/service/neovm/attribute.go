@@ -42,7 +42,9 @@ func AttributeGetUsage(service *NeoVmService, engine *vm.Executor) error {
 
 // AttributeGetData put attribute's data to vm stack
 func AttributeGetData(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "AttributeGetData", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s\n",
+		"AttributeGetData", service.Height, txHash.ToHexString())
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
@@ -52,7 +54,8 @@ func AttributeGetData(service *NeoVmService, engine *vm.Executor) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,val:%s\n", "AttributeGetData", service.Height, val.Dump())
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s,val:%s\n",
+			"AttributeGetData", service.Height, txHash.ToHexString(), val.Dump())
 		return engine.EvalStack.Push(val)
 	}
 	return errors.NewErr("[AttributeGetData] Wrong type!")

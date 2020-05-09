@@ -170,7 +170,9 @@ func RuntimeLog(service *NeoVmService, engine *vm.Executor) error {
 }
 
 func RuntimeGetTrigger(service *NeoVmService, engine *vm.Executor) error {
-	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "RuntimeGetTrigger", service.Height)
+	txHash := service.Tx.Hash()
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, txHash:%s\n",
+		"RuntimeGetTrigger", service.Height, txHash.ToHexString())
 	return engine.EvalStack.PushInt64(int64(0))
 }
 
