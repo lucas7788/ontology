@@ -20,6 +20,7 @@ package neovm
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology/common"
@@ -169,6 +170,7 @@ func RuntimeLog(service *NeoVmService, engine *vm.Executor) error {
 }
 
 func RuntimeGetTrigger(service *NeoVmService, engine *vm.Executor) error {
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "RuntimeGetTrigger", service.Height)
 	return engine.EvalStack.PushInt64(int64(0))
 }
 

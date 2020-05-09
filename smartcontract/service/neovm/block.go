@@ -18,6 +18,9 @@
 package neovm
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/ontio/ontology/core/types"
 	"github.com/ontio/ontology/errors"
 	vm "github.com/ontio/ontology/vm/neovm"
@@ -26,12 +29,15 @@ import (
 
 // BlockGetTransactionCount put block's transactions count to vm stack
 func BlockGetTransactionCount(service *NeoVmService, engine *vm.Executor) error {
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockGetTransactionCount", service.Height)
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
 	}
 	if block, ok := i.Data.(*types.Block); ok {
 		val := vmtypes.VmValueFromInt64(int64(len(block.Transactions)))
+		blockHash := block.Hash()
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockhash:%s\n", "BlockGetTransactionCount", service.Height, blockHash.ToHexString())
 		return engine.EvalStack.Push(val)
 	}
 	return errors.NewErr("[BlockGetTransactionCount] Wrong type ")
@@ -58,6 +64,7 @@ func BlockGetTransactions(service *NeoVmService, engine *vm.Executor) error {
 
 // BlockGetTransaction put block's transaction to vm stack
 func BlockGetTransaction(service *NeoVmService, engine *vm.Executor) error {
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "BlockGetTransaction", service.Height)
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
@@ -70,6 +77,9 @@ func BlockGetTransaction(service *NeoVmService, engine *vm.Executor) error {
 		if index < 0 || int(index) >= len(block.Transactions) {
 			return errors.NewErr("[BlockGetTransaction] index out of bounds")
 		}
+		blockHash := block.Hash()
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d, blockhash:%s\n",
+			"BlockGetTransaction", service.Height, blockHash.ToHexString())
 		return engine.EvalStack.PushAsInteropValue(block.Transactions[index])
 
 	}

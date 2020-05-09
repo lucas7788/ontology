@@ -19,6 +19,9 @@
 package neovm
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/ontio/ontology/core/types"
 	"github.com/ontio/ontology/errors"
 	vm "github.com/ontio/ontology/vm/neovm"
@@ -39,6 +42,7 @@ func AttributeGetUsage(service *NeoVmService, engine *vm.Executor) error {
 
 // AttributeGetData put attribute's data to vm stack
 func AttributeGetData(service *NeoVmService, engine *vm.Executor) error {
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "AttributeGetData", service.Height)
 	i, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return err
@@ -48,6 +52,7 @@ func AttributeGetData(service *NeoVmService, engine *vm.Executor) error {
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,val:%s\n", "AttributeGetData", service.Height, val.Dump())
 		return engine.EvalStack.Push(val)
 	}
 	return errors.NewErr("[AttributeGetData] Wrong type!")

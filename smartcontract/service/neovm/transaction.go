@@ -20,6 +20,7 @@ package neovm
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ontio/ontology/core/types"
 	vm "github.com/ontio/ontology/vm/neovm"
@@ -28,12 +29,15 @@ import (
 
 // GetExecutingAddress push transaction's hash to vm stack
 func TransactionGetHash(service *NeoVmService, engine *vm.Executor) error {
+	fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d\n", "TransactionGetHash", service.Height)
 	txn, err := engine.EvalStack.PopAsInteropValue()
 	if err != nil {
 		return fmt.Errorf("[TransactionGetHash] PopAsInteropValue error:%s", err)
 	}
 	if tx, ok := txn.Data.(*types.Transaction); ok {
 		txHash := tx.Hash()
+		fmt.Fprintf(os.Stderr, "serviceName:%s, height:%d,txHash:%s\n",
+			"TransactionGetHash", service.Height, txHash.ToHexString())
 		return engine.EvalStack.PushBytes(txHash.ToArray())
 	}
 	return fmt.Errorf("[TransactionGetHash] Type error")
