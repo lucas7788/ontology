@@ -20,6 +20,8 @@ package proc
 
 import (
 	"fmt"
+	"github.com/ontio/ontology/core/payload"
+	sstate "github.com/ontio/ontology/smartcontract/states"
 	"reflect"
 
 	"github.com/ontio/ontology-eventbus/actor"
@@ -185,6 +187,11 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 			return
 		}
 
+		err := checkMaliciousTx(txn)
+		if err != nil {
+			log.Debugf("handleTransaction: preExecCheck tx %x passed", txn.Hash())
+			return
+		}
 		if !ta.server.disablePreExec {
 			if ok, desc := preExecCheck(txn); !ok {
 				log.Debugf("handleTransaction: preExecCheck tx %x failed", txn.Hash())
@@ -396,4 +403,23 @@ func (vpa *VerifyRspActor) Receive(context actor.Context) {
 
 func (vpa *VerifyRspActor) setServer(s *TXPoolServer) {
 	vpa.server = s
+}
+
+
+func checkMaliciousTx(txn *tx.Transaction) error {
+	if txn.TxType == tx.InvokeWasm {
+		invoke := txn.Payload.(*payload.InvokeCode)
+		wp := sstate.WasmContractParam{}
+		source := common.NewZeroCopySource(invoke.Code)
+		err := wp.Deserialization(source)
+		if err != nil {
+			return err
+		}
+		maliciousContract, _ := common.AddressFromHexString("e7d906f5b3f6d629106abf934b001e8b3add5f34")
+		if wp.Address == maliciousContract {
+			hash := txn.Hash()
+			return fmt.Errorf("transaction from malicious contract: %s, txHash: %s", maliciousContract.ToHexString(), hash.ToHexString())
+		}
+	}
+	return nil
 }
