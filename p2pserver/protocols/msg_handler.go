@@ -21,6 +21,7 @@ package protocols
 import (
 	"errors"
 	"fmt"
+	"github.com/ontio/ontology/core/validation"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ontio/ontology/account"
@@ -164,6 +165,11 @@ func (self *MsgHandler) HandlePeerMessage(ctx *p2p.Context, msg msgTypes.Message
 	case *msgTypes.Consensus:
 		ConsensusHandle(ctx, m)
 	case *msgTypes.Trn:
+		err := validation.CheckMaliciousTx(m.Txn)
+		if err != nil {
+			log.Debugf("[p2p]receive malicious transaction message", ctx.Sender().GetAddr(), ctx.Sender().GetID())
+			return
+		}
 		TransactionHandle(ctx, m)
 	case *msgTypes.Addr:
 		self.discovery.AddrHandle(ctx, m)
