@@ -128,6 +128,13 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			"result":  response["result"],
 			"id":      request.ID,
 		})
+		errorCode,ok := response["error"].(int64)
+		if ok {
+			if errorCode == berr.MALICIOUS_ERROR {
+				log.Error("malicious transaction, ip:", r.RemoteAddr)
+				return
+			}
+		}
 		if err != nil {
 			log.Error("HTTP JSON RPC Handle - json.Marshal: ", err)
 			return

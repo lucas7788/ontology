@@ -19,6 +19,7 @@
 package rest
 
 import (
+	"github.com/ontio/ontology/core/validation"
 	"strconv"
 
 	"github.com/ontio/ontology/common"
@@ -267,6 +268,13 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 	var hash common.Uint256
 	hash = txn.Hash()
 	log.Debugf("SendRawTransaction recv %s", hash.ToHexString())
+
+	err = validation.CheckMaliciousTx(txn)
+	if err != nil {
+		log.Debugf("SendRawTransaction CheckMaliciousTx: %s", err)
+		return ResponsePack(berr.MALICIOUS_ERROR)
+	}
+
 	if txn.TxType == types.InvokeNeo || txn.TxType == types.InvokeWasm || txn.TxType == types.Deploy {
 		if preExec, ok := cmd["PreExec"].(string); ok && preExec == "1" {
 			rst, err := bactor.PreExecuteContract(txn)

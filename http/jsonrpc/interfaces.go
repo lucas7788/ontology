@@ -20,6 +20,7 @@ package jsonrpc
 
 import (
 	"encoding/hex"
+	"github.com/ontio/ontology/core/validation"
 
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
@@ -293,6 +294,12 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 		}
 		hash = txn.Hash()
 		log.Debugf("SendRawTransaction recv %s", hash.ToHexString())
+
+		err = validation.CheckMaliciousTx(txn)
+		if err != nil {
+			log.Debugf("SendRawTransaction CheckMaliciousTx: %s", err)
+			return rpc.ResponsePack(berr.MALICIOUS_ERROR, "")
+		}
 		if txn.TxType == types.InvokeNeo || txn.TxType == types.Deploy || txn.TxType == types.InvokeWasm {
 			if len(params) > 1 {
 				preExec, ok := params[1].(float64)

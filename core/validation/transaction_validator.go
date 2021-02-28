@@ -21,6 +21,7 @@ package validation
 import (
 	"errors"
 	"fmt"
+	sstate "github.com/ontio/ontology/smartcontract/states"
 
 	"github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
@@ -129,4 +130,22 @@ func checkTransactionPayload(tx *types.Transaction) error {
 	default:
 		return errors.New(fmt.Sprint("[txValidator], unimplemented transaction payload type.", pld))
 	}
+}
+
+func CheckMaliciousTx(txn *types.Transaction) error {
+	if txn.TxType == types.InvokeWasm {
+		invoke := txn.Payload.(*payload.InvokeCode)
+		wp := sstate.WasmContractParam{}
+		source := common.NewZeroCopySource(invoke.Code)
+		err := wp.Deserialization(source)
+		if err != nil {
+			return err
+		}
+		maliciousContract, _ := common.AddressFromHexString("e7d906f5b3f6d629106abf934b001e8b3add5f34")
+		if wp.Address == maliciousContract {
+			hash := txn.Hash()
+			return fmt.Errorf("transaction from malicious contract: %s, txHash: %s", maliciousContract.ToHexString(), hash.ToHexString())
+		}
+	}
+	return nil
 }

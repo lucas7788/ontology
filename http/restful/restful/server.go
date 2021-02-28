@@ -279,6 +279,13 @@ func (this *restServer) initGetHandler() {
 			if h, ok := this.getMap[url]; ok {
 				req = this.getParams(r, url, req)
 				resp = h.handler(req)
+				errorCode,ok := resp["error"].(int64)
+				if ok {
+					if errorCode == berr.MALICIOUS_ERROR {
+						log.Error("malicious transaction, ip:", r.RemoteAddr)
+						return
+					}
+				}
 				resp["Action"] = h.name
 			} else {
 				resp = rest.ResponsePack(berr.INVALID_METHOD)
