@@ -188,7 +188,7 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 
 		err := validation.CheckMaliciousTx(txn)
 		if err != nil {
-			log.Debugf("handleTransaction: checkMaliciousTx tx %x pass", txn.Hash())
+			log.Infof("handleTransaction: checkMaliciousTx tx %x pass", txn.Hash())
 			if sender == tc.HttpSender && txResultCh != nil {
 				replyTxResult(txResultCh, txn.Hash(), errors.ErrNoError,
 					"success")
