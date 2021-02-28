@@ -271,7 +271,7 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 
 	err = validation.CheckMaliciousTx(txn)
 	if err != nil {
-		log.Debugf("SendRawTransaction CheckMaliciousTx: %s", err)
+		log.Infof("SendRawTransaction CheckMaliciousTx: %s", err)
 		return ResponsePack(berr.MALICIOUS_ERROR)
 	}
 

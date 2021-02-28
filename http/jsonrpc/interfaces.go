@@ -297,7 +297,7 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 
 		err = validation.CheckMaliciousTx(txn)
 		if err != nil {
-			log.Debugf("SendRawTransaction CheckMaliciousTx: %s", err)
+			log.Infof("SendRawTransaction CheckMaliciousTx: %s", err)
 			return rpc.ResponsePack(berr.MALICIOUS_ERROR, "")
 		}
 		if txn.TxType == types.InvokeNeo || txn.TxType == types.Deploy || txn.TxType == types.InvokeWasm {
