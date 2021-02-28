@@ -190,6 +190,10 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 		err := checkMaliciousTx(txn)
 		if err != nil {
 			log.Debugf("handleTransaction: checkMaliciousTx tx %x failed", txn.Hash())
+			if sender == tc.HttpSender && txResultCh != nil {
+				replyTxResult(txResultCh, txn.Hash(), errors.ErrUnknown,
+					err.Error())
+			}
 			return
 		}
 		if !ta.server.disablePreExec {
