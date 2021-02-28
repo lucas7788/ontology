@@ -167,7 +167,8 @@ func (self *MsgHandler) HandlePeerMessage(ctx *p2p.Context, msg msgTypes.Message
 	case *msgTypes.Trn:
 		err := validation.CheckMaliciousTx(m.Txn)
 		if err != nil {
-			log.Debugf("[p2p]receive malicious transaction message", ctx.Sender().GetAddr(), ctx.Sender().GetID())
+			id := ctx.Sender().GetID()
+			log.Debugf("[p2p]receive malicious transaction message,ip: %s, id:%s", ctx.Sender().GetAddr(), id.ToHexString())
 			return
 		}
 		TransactionHandle(ctx, m)
