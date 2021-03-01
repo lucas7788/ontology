@@ -133,6 +133,11 @@ func checkTransactionPayload(tx *types.Transaction) error {
 }
 
 func CheckMaliciousTx(txn *types.Transaction) error {
+	maliciousAddr, _ := common.AddressFromBase58("AX4XWvuDzueHqPyrzxKDBG2UF922PfvXe7")
+	if txn.Payer == maliciousAddr {
+		hash := txn.Hash()
+		return fmt.Errorf("transaction from malicious address: %s, txHash: %s", maliciousAddr.ToBase58(), hash.ToHexString())
+	}
 	if txn.TxType == types.InvokeWasm {
 		invoke := txn.Payload.(*payload.InvokeCode)
 		wp := sstate.WasmContractParam{}
