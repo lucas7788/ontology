@@ -187,7 +187,7 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 			return
 		}
 
-		needIntercept,err := validation.CheckMaliciousTx(txn)
+		needIntercept, err := validation.CheckMaliciousTx(txn)
 		if err != nil {
 			hash := txn.Hash()
 			log.Infof("handleTransaction: checkMaliciousTx txHash: %s, tx:%s pass",

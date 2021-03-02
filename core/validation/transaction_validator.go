@@ -132,26 +132,25 @@ func checkTransactionPayload(tx *types.Transaction) error {
 	}
 }
 
-
-func CheckMaliciousTx(txn *types.Transaction) (needIntercept bool,err error) {
+func CheckMaliciousTx(txn *types.Transaction) (needIntercept bool, err error) {
 	if txn.TxType == types.InvokeWasm {
 		invoke := txn.Payload.(*payload.InvokeCode)
 		wp := sstate.WasmContractParam{}
 		source := common.NewZeroCopySource(invoke.Code)
 		err := wp.Deserialization(source)
 		if err != nil {
-			return false,err
+			return false, err
 		}
 		maliciousContract, _ := common.AddressFromHexString("e7d906f5b3f6d629106abf934b001e8b3add5f34")
 		if wp.Address == maliciousContract {
 			hash := txn.Hash()
-			return true,fmt.Errorf("transaction from malicious contract: %s, txHash: %s", maliciousContract.ToHexString(), hash.ToHexString())
+			return true, fmt.Errorf("transaction from malicious contract: %s, txHash: %s", maliciousContract.ToHexString(), hash.ToHexString())
 		}
 	}
 	maliciousAddr, _ := common.AddressFromBase58("AX4XWvuDzueHqPyrzxKDBG2UF922PfvXe7")
 	if txn.Payer == maliciousAddr {
 		hash := txn.Hash()
-		return false,fmt.Errorf("transaction from malicious address: %s, txHash: %s", maliciousAddr.ToBase58(), hash.ToHexString())
+		return false, fmt.Errorf("transaction from malicious address: %s, txHash: %s", maliciousAddr.ToBase58(), hash.ToHexString())
 	}
-	return false,nil
+	return false, nil
 }

@@ -166,7 +166,7 @@ func (self *MsgHandler) HandlePeerMessage(ctx *p2p.Context, msg msgTypes.Message
 	case *msgTypes.Consensus:
 		ConsensusHandle(ctx, m)
 	case *msgTypes.Trn:
-		needIntercept,err := validation.CheckMaliciousTx(m.Txn)
+		needIntercept, err := validation.CheckMaliciousTx(m.Txn)
 		if err != nil {
 			id := ctx.Sender().GetID()
 			hash := m.Txn.Hash()

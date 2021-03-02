@@ -43,7 +43,7 @@ const (
 	INTERNAL_ERROR  int64 = 45001
 	SMARTCODE_ERROR int64 = 47001
 	PRE_EXEC_ERROR  int64 = 47002
-	MALICIOUS_ERROR  int64 = 47003
+	MALICIOUS_ERROR int64 = 47003
 )
 
 var ErrMap = map[int64]string{
