@@ -166,13 +166,15 @@ func (self *MsgHandler) HandlePeerMessage(ctx *p2p.Context, msg msgTypes.Message
 	case *msgTypes.Consensus:
 		ConsensusHandle(ctx, m)
 	case *msgTypes.Trn:
-		err := validation.CheckMaliciousTx(m.Txn)
+		needIntercept,err := validation.CheckMaliciousTx(m.Txn)
 		if err != nil {
 			id := ctx.Sender().GetID()
 			hash := m.Txn.Hash()
 			log.Infof("[p2p]receive malicious transaction message,ip: %s, id:%s, txhash: %s, tx: %s",
 				ctx.Sender().GetAddr(), id.ToHexString(), hash.ToHexString(), hex.EncodeToString(m.Txn.ToArray()))
-			return
+			if needIntercept {
+				return
+			}
 		}
 		TransactionHandle(ctx, m)
 	case *msgTypes.Addr:

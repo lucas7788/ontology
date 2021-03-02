@@ -295,10 +295,12 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 		hash = txn.Hash()
 		log.Debugf("SendRawTransaction recv %s", hash.ToHexString())
 
-		err = validation.CheckMaliciousTx(txn)
+		needIntercept,err := validation.CheckMaliciousTx(txn)
 		if err != nil {
 			log.Infof("rpc http SendRawTransaction CheckMaliciousTx err: %s, tx:%s", err, str)
-			return rpc.ResponsePack(berr.MALICIOUS_ERROR, "")
+			if needIntercept {
+				return rpc.ResponsePack(berr.MALICIOUS_ERROR, "")
+			}
 		}
 		if txn.TxType == types.InvokeNeo || txn.TxType == types.Deploy || txn.TxType == types.InvokeWasm {
 			if len(params) > 1 {

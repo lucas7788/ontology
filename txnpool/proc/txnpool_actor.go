@@ -19,6 +19,7 @@
 package proc
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/ontio/ontology/core/validation"
 	"reflect"
@@ -186,14 +187,18 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 			return
 		}
 
-		err := validation.CheckMaliciousTx(txn)
+		needIntercept,err := validation.CheckMaliciousTx(txn)
 		if err != nil {
-			log.Infof("handleTransaction: checkMaliciousTx tx %x pass", txn.Hash())
-			if sender == tc.HttpSender && txResultCh != nil {
-				replyTxResult(txResultCh, txn.Hash(), errors.ErrNoError,
-					"success")
+			hash := txn.Hash()
+			log.Infof("handleTransaction: checkMaliciousTx txHash: %s, tx:%s pass",
+				hash.ToHexString(), hex.EncodeToString(txn.ToArray()))
+			if needIntercept {
+				if sender == tc.HttpSender && txResultCh != nil {
+					replyTxResult(txResultCh, txn.Hash(), errors.ErrNoError,
+						"success")
+				}
+				return
 			}
-			return
 		}
 		if !ta.server.disablePreExec {
 			if ok, desc := preExecCheck(txn); !ok {
