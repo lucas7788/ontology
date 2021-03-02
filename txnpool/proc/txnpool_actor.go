@@ -192,13 +192,13 @@ func (ta *TxActor) handleTransaction(sender tc.SenderType, self *actor.PID,
 			hash := txn.Hash()
 			log.Infof("handleTransaction: checkMaliciousTx txHash: %s, tx:%s pass",
 				hash.ToHexString(), hex.EncodeToString(txn.ToArray()))
-			if needIntercept {
-				if sender == tc.HttpSender && txResultCh != nil {
-					replyTxResult(txResultCh, txn.Hash(), errors.ErrNoError,
-						"success")
-				}
-				return
+		}
+		if needIntercept {
+			if sender == tc.HttpSender && txResultCh != nil {
+				replyTxResult(txResultCh, txn.Hash(), errors.ErrNoError,
+					"success")
 			}
+			return
 		}
 		if !ta.server.disablePreExec {
 			if ok, desc := preExecCheck(txn); !ok {
