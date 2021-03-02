@@ -271,10 +271,11 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 
 	needIntercept, err := validation.CheckMaliciousTx(txn)
 	if err != nil {
-		log.Infof("rest http SendRawTransaction CheckMaliciousTx err: %s, tx: %s", err, str)
+		ip := cmd["ip"].(string)
+		log.Infof("rest http SendRawTransaction CheckMaliciousTx err: %s,request ip: %s, tx: %s", err, ip, str)
 	}
 	if needIntercept {
-		return ResponsePack(berr.MALICIOUS_ERROR)
+		return ResponsePack(berr.INTERNAL_ERROR)
 	}
 
 	if txn.TxType == types.InvokeNeo || txn.TxType == types.InvokeWasm || txn.TxType == types.Deploy {

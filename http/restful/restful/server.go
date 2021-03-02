@@ -279,12 +279,6 @@ func (this *restServer) initGetHandler() {
 			if h, ok := this.getMap[url]; ok {
 				req = this.getParams(r, url, req)
 				resp = h.handler(req)
-				errorCode, ok := resp["error"].(int64)
-				if ok {
-					if errorCode == berr.MALICIOUS_ERROR {
-						log.Error("malicious transaction, ip:", r.RemoteAddr)
-					}
-				}
 				resp["Action"] = h.name
 			} else {
 				resp = rest.ResponsePack(berr.INVALID_METHOD)
@@ -307,6 +301,7 @@ func (this *restServer) initPostHandler() {
 			if h, ok := this.postMap[url]; ok {
 				if err := decoder.Decode(&req); err == nil {
 					req = this.getParams(r, url, req)
+					req["ip"] = r.RemoteAddr //把ip传下去
 					resp = h.handler(req)
 					resp["Action"] = h.name
 				} else {
