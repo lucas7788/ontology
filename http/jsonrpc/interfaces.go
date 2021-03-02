@@ -303,7 +303,7 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 			return rpc.ResponsePack(berr.INTERNAL_ERROR, "")
 		}
 		if txn.TxType == types.InvokeNeo || txn.TxType == types.Deploy || txn.TxType == types.InvokeWasm {
-			if len(params) > 1 {
+			if len(params) > 2 {
 				preExec, ok := params[1].(float64)
 				if ok && preExec == 1 {
 					result, err := bactor.PreExecuteContract(txn)
