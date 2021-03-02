@@ -271,8 +271,10 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 
 	needIntercept, err := validation.CheckMaliciousTx(txn)
 	if err != nil {
-		ip := cmd["ip"].(string)
-		log.Infof("rest http SendRawTransaction CheckMaliciousTx err: %s,request ip: %s, tx: %s", err, ip, str)
+		ip, ok := cmd["ip"].(string)
+		if ok {
+			log.Infof("rest http SendRawTransaction CheckMaliciousTx err: %s,request ip: %s, tx: %s", err, ip, str)
+		}
 	}
 	if needIntercept {
 		return ResponsePack(berr.INTERNAL_ERROR)
