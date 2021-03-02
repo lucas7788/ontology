@@ -296,8 +296,10 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 		log.Debugf("SendRawTransaction recv %s", hash.ToHexString())
 		needIntercept, err := validation.CheckMaliciousTx(txn)
 		if err != nil {
-			ip := params[len(params)-1].(string) //最后一个参数是ip地址
-			log.Infof("rpc http SendRawTransaction CheckMaliciousTx err: %s,request ip: %s, tx:%s", err, ip, str)
+			//最后一个参数是ip地址
+			if ip, ok := params[len(params)-1].(string); ok {
+				log.Infof("rpc http SendRawTransaction CheckMaliciousTx err: %s,request ip: %s, tx:%s", err, ip, str)
+			}
 		}
 		if needIntercept {
 			return rpc.ResponsePack(berr.INTERNAL_ERROR, "")
