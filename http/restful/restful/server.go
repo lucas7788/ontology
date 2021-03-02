@@ -283,7 +283,6 @@ func (this *restServer) initGetHandler() {
 				if ok {
 					if errorCode == berr.MALICIOUS_ERROR {
 						log.Error("malicious transaction, ip:", r.RemoteAddr)
-						return
 					}
 				}
 				resp["Action"] = h.name
