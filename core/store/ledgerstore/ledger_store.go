@@ -1405,3 +1405,9 @@ func (this *LedgerStoreImp) maxAllowedPruneHeight(currHeader *types.Header) uint
 	}
 	return lastReferHeight - 1
 }
+
+func (this *LedgerStoreImp)GetCacheDB() *storage.CacheDB {
+	overlay := this.stateStore.NewOverlayDB()
+	return storage.NewCacheDB(overlay)
+
+}
