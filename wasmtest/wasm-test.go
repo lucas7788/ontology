@@ -20,10 +20,16 @@ package main
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	types2 "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path"
 	"path/filepath"
@@ -56,8 +62,9 @@ import (
 	"github.com/ontio/wagon/wasm"
 )
 
-const contractDir = "testwasmdata"
+const contractDir = "/Users/sss/gopath/src/github.com/ontio/ontology/wasmtest/test-contract"
 const testcaseMethod = "testcase"
+const WingABI = "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Approval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"from\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"Transfer\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"}],\"name\":\"allowance\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"balanceOf\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"subtractedValue\",\"type\":\"uint256\"}],\"name\":\"decreaseAllowance\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"addedValue\",\"type\":\"uint256\"}],\"name\":\"increaseAllowance\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"name\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"symbol\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"totalSupply\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"transfer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"transferFrom\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"decimals\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"mint\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"burn\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"
 
 func NewDeployWasmContract(signer *account.Account, code []byte) (*types.Transaction, error) {
 	mutable, err := utils.NewDeployCodeTransaction(0, 100000000, code, payload.WASMVM_TYPE, "name", "version",
@@ -85,6 +92,22 @@ func NewDeployNeoContract(signer *account.Account, code []byte) (*types.Transact
 	}
 	tx, err := mutable.IntoImmutable()
 	return tx, err
+}
+
+func NewDeployEvmContract(testPrivateKey *ecdsa.PrivateKey, code []byte) (*types2.Transaction, error) {
+	chainId := big.NewInt(5851)
+
+	opts, err := bind.NewKeyedTransactorWithChainID(testPrivateKey, chainId)
+	opts.GasPrice = big.NewInt(0)
+	checkErr(err)
+	parsed, err := abi.JSON(strings.NewReader(WingABI))
+	checkErr(err)
+	input, err := parsed.Pack("")
+	checkErr(err)
+	deployTx := types2.NewContractCreation(opts.Nonce.Uint64(), opts.Value, opts.GasLimit, opts.GasPrice, input)
+	signedTx, err := opts.Signer(opts.From, deployTx)
+	checkErr(err)
+	return signedTx, err
 }
 
 func GenNeoTextCaseTransaction(contract common.Address, database *ledger.Ledger) [][]common3.TestCase {
@@ -181,7 +204,8 @@ func LoadContracts(dir string) ([]Item, error) {
 	sort.Strings(fnames)
 
 	for _, name := range fnames {
-		if !(strings.HasSuffix(name, ".wasm") || strings.HasSuffix(name, ".avm")) {
+		if !(strings.HasSuffix(name, ".wasm") || strings.HasSuffix(name, ".avm") ||
+			strings.HasSuffix(name, ".evm")) {
 			continue
 		}
 		raw, err := ioutil.ReadFile(name)
@@ -298,17 +322,27 @@ func main() {
 	contract, err := LoadContracts(contractDir)
 	checkErr(err)
 
+	testPrivateKey := "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+
+	privateKey, err := crypto.HexToECDSA(testPrivateKey)
+	checkErr(err)
+
 	log.Infof("deploying %d wasm contracts", len(contract))
 	txes := make([]*types.Transaction, 0, len(contract))
 	for _, item := range contract {
 		file := item.File
 		cont := item.Contract
 		var tx *types.Transaction
+		var ethtx *types2.Transaction
 		var err error
 		if strings.HasSuffix(file, ".wasm") {
 			tx, err = NewDeployWasmContract(acct, cont)
 		} else if strings.HasSuffix(file, ".avm") {
 			tx, err = NewDeployNeoContract(acct, cont)
+		} else if strings.HasSuffix(file, ".evm") {
+			ethtx, err = NewDeployEvmContract(privateKey, cont)
+			checkErr(err)
+			tx, err = types.TransactionFromEIP155(ethtx)
 		}
 
 		checkErr(err)
@@ -322,6 +356,8 @@ func main() {
 	block, _ := makeBlock(acct, txes)
 	err = database.AddBlock(block, nil, common.UINT256_EMPTY)
 	checkErr(err)
+
+	return
 
 	addrMap := make([]common3.ConAddr, 0)
 	for _, item := range contract {
