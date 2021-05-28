@@ -95,15 +95,18 @@ func NewDeployNeoContract(signer *account.Account, code []byte) (*types.Transact
 }
 
 func NewDeployEvmContract(testPrivateKey *ecdsa.PrivateKey, code []byte) (*types2.Transaction, error) {
-	chainId := big.NewInt(5851)
+	chainId := big.NewInt(0)
 
 	opts, err := bind.NewKeyedTransactorWithChainID(testPrivateKey, chainId)
 	opts.GasPrice = big.NewInt(0)
+	opts.Nonce = big.NewInt(1)
+
 	checkErr(err)
 	parsed, err := abi.JSON(strings.NewReader(WingABI))
 	checkErr(err)
 	input, err := parsed.Pack("")
 	checkErr(err)
+	input = append(code, input...)
 	deployTx := types2.NewContractCreation(opts.Nonce.Uint64(), opts.Value, opts.GasLimit, opts.GasPrice, input)
 	signedTx, err := opts.Signer(opts.From, deployTx)
 	checkErr(err)
@@ -343,13 +346,16 @@ func main() {
 			ethtx, err = NewDeployEvmContract(privateKey, cont)
 			checkErr(err)
 			tx, err = types.TransactionFromEIP155(ethtx)
+			checkErr(err)
+			_,err = tx.GetEIP155Tx()
+			checkErr(err)
 		}
 
 		checkErr(err)
 
-		res, err := database.PreExecuteContract(tx)
-		log.Infof("deploy %s consume gas: %d", file, res.Gas)
-		checkErr(err)
+		//res, err := database.PreExecuteContract(tx)
+		//log.Infof("deploy %s consume gas: %d", file, res.Gas)
+		//checkErr(err)
 		txes = append(txes, tx)
 	}
 

@@ -741,7 +741,6 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 			err = e
 			return
 		}
-		fmt.Println(tx.TxType)
 		if tx.GasPrice == 0 {
 			notify.GasStepUsed = 0
 		} else {
