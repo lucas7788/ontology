@@ -20,6 +20,7 @@ package common
 import (
 	"bytes"
 	"encoding/json"
+	common3 "github.com/ethereum/go-ethereum/common"
 
 	utils2 "github.com/ontio/ontology/cmd/utils"
 	"github.com/ontio/ontology/core/payload"
@@ -80,8 +81,9 @@ type TestCase struct {
 }
 
 type ConAddr struct {
-	File    string
-	Address common.Address
+	File       string
+	Address    common.Address
+	EthAddress common3.Address
 }
 
 type TestContext struct {

@@ -99,7 +99,7 @@ func NewDeployEvmContract(testPrivateKey *ecdsa.PrivateKey, code []byte) (*types
 
 	opts, err := bind.NewKeyedTransactorWithChainID(testPrivateKey, chainId)
 	opts.GasPrice = big.NewInt(0)
-	opts.Nonce = big.NewInt(1)
+	opts.Nonce = big.NewInt(0)
 
 	checkErr(err)
 	parsed, err := abi.JSON(strings.NewReader(WingABI))
@@ -353,9 +353,9 @@ func main() {
 
 		checkErr(err)
 
-		//res, err := database.PreExecuteContract(tx)
-		//log.Infof("deploy %s consume gas: %d", file, res.Gas)
-		//checkErr(err)
+		res, err := database.PreExecuteContract(tx)
+		log.Infof("deploy %s consume gas: %d", file, res.Gas)
+		checkErr(err)
 		txes = append(txes, tx)
 	}
 
@@ -363,24 +363,62 @@ func main() {
 	err = database.AddBlock(block, nil, common.UINT256_EMPTY)
 	checkErr(err)
 
-	return
+	keyAddr := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 	addrMap := make([]common3.ConAddr, 0)
+	var bridge common3.ConAddr
+	var wingErc20 common3.ConAddr
+	var wingOep4 common3.ConAddr
 	for _, item := range contract {
 		file := item.File
 		code := item.Contract
-		conaddr := common3.ConAddr{
-			File:    file,
-			Address: common.AddressFromVmCode(code),
+		if strings.HasSuffix(file, ".evm") {
+			wingErc20 = common3.ConAddr{
+				File:       file,
+				EthAddress: crypto.CreateAddress(keyAddr, 0),
+			}
+		} else {
+			if strings.HasSuffix(file,"bridge.avm") {
+				bridge = common3.ConAddr{
+					File:    file,
+					Address: common.AddressFromVmCode(code),
+				}
+			} else if strings.HasSuffix(file,"WingToken.avm"){
+				wingOep4 = common3.ConAddr{
+					File:    file,
+					Address: common.AddressFromVmCode(code),
+				}
+			}
 		}
+		//addrMap = append(addrMap, conaddr)
+	}
 
-		addrMap = append(addrMap, conaddr)
+    // 调用 bridge init 方法
+    param := fmt.Sprintf("[Address:%s,Address:%s]", wingOep4.Address.ToBase58(), wingErc20.Address.ToBase58())
+
+    fmt.Println("param:", param)
+
+	admin,_ := common.AddressFromBase58("ARGK44mXXZfU6vcdSfFKMzjaabWxyog1qb")
+	tc := common3.TestCase{
+		Env:         common3.TestEnv{
+			Witness:[]common.Address{admin},
+		},
+		NeedContext:true,
+		Method :"init",
+		Param  :param,
+		Expect :"bool:true",
 	}
 
 	testContext := common3.TestContext{
 		Admin:   acct.Address,
 		AddrMap: addrMap,
 	}
+	tx,err := common3.GenNeoVMTransaction(tc, bridge.Address, &testContext)
+	checkErr(err)
+
+	execTxCheckRes(tx, tc, database, bridge.Address, acct)
+	return
+
 
 	for _, item := range contract {
 		file := item.File
