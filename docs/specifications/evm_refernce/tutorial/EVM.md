@@ -287,6 +287,7 @@ mkdir hardhatdemo
 cd hardhatdemo
 npm init
 npm install --save-dev hardhat
+npx hardhat
 ```
 
 #### 5.3.2 启动本地节点
