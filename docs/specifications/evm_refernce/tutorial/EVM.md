@@ -1,16 +1,16 @@
-# ontology支持EVM的介绍
+# Ontology支持EVM的介绍
 
 ontology目前已支持EVM合约，开发者可以在ontology链上部署和调用EVM合约, 并且支持ethereum相关的合约调用工具如web3js等。
 
-* [ontology支持EVM的介绍](#ontology支持EVM的介绍)
+* [Ontology支持EVM的介绍](#Ontology支持EVM的介绍)
     * [1、Developer Quick Start](#1-Developer-Quick-Start)
-    * [2、部署EVM合约到ontology链](#部署EVM合约到ontology链)
-        *[2.1使用Remix工具](#21使用Remix工具)
+    * [2、部署EVM合约到ontology链](#2-部署EVM合约到ontology链)
+        *[2.1 使用Remix工具](#21-使用Remix工具)
             *[2.1.1 新建合约](#211-新建合约)
             *[2.1.2 编译合约](#212-编译合约)
             *[2.1.3 部署合约](#213-部署合约)
             *[2.1.4 调用合约](#214-调用合约)
-        *[2.2使用Remix工具](#22使用Truffle)
+        *[2.2 使用Truffle](#22-使用Truffle)
             *[2.2.1 安装truffle](#221-安装truffle)
             *[2.2.2 配置truffle-config](#222-配置truffle-config)
             *[2.2.3 部署合约到ontology链](#223-部署合约到ontology链)
@@ -19,7 +19,7 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
             *[2.3.2 配置hardhat-config](232-配置hardhat-config)
             *[2.3.3 部署合约到ontology链](233-部署合约到ontology链)
     * [3、网络详情](#3-网络详情)
-        *[3.1 节点网络](31节点网络)
+        *[3.1 节点网络](31-节点网络)
         *[3.2 ontology链上EVM资产列表](32-ontology链上EVM资产列表)
     * [4、ethereum链上的资产跨到ontology链上](4-ethereum链上的资产跨到ontology链上)  
     * [5、在ontology链上开发一个新的EVM合约](5-在ontology链上开发一个新的EVM合约)
@@ -45,14 +45,14 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 
   ethereum合约可以用solidity语言开发，[solidity教程](https://docs.soliditylang.org/en/v0.8.6/)
 
-### 2.1使用Remix工具
+### 2.1 使用Remix工具
   
   这是一个hello world 合约样例，这个合约可以用于存一段字符串，并且查询。 
     RemixIDE的使用
       
       [Remix IDE](https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.1+commit.df193b15.js)是一个在线的ethereum合约开发工具。
 
-####2.1.1 新建合约
+#### 2.1.1 新建合约
       
       ```
       // Specifies that the source code is for a version
@@ -81,12 +81,12 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
           }
       }
       ```
-####2.1.2 编译合约
+#### 2.1.2 编译合约
       
       点击下图中的`Compile helloworld.sol`按钮编译合约。
       ![avatar](compile.jpg)
       
-####2.1.3 部署合约
+#### 2.1.3 部署合约
       
       现在需要把我们编译好的合约部署到ontology链上，为了能链上ontology节点，
       我们可以用Metamask这样的wallet来完成。
@@ -98,34 +98,40 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
       - 输入节点url - "http://localhost:20339"
       - 输入Chain ID:12345
       - 输入区块链浏览器url - "https://explorer.ont.io/"
-####2.1.4 调用合约
+#### 2.1.4 调用合约
 
 ### 2.2 使用Truffle
-####2.2.1 安装truffle
-####2.2.2 配置truffle-config
-####2.2.3 部署合约到ontology链
+
+#### 2.2.1 安装truffle
+
+#### 2.2.2 配置truffle-config
+
+#### 2.2.3 部署合约到ontology链
 
 
 ### 2.3 使用Hardhat
-####2.3.1 搭建Hardhat开发环境
-####2.3.2 配置hardhat-config
-####2.3.3 部署合约到ontology链
+
+#### 2.3.1 搭建Hardhat开发环境
+
+#### 2.3.2 配置hardhat-config
+
+#### 2.3.3 部署合约到ontology链
 
 ## 3、网络详情
 
-###3.1 节点网络
+### 3.1 节点网络
 
-  主网信息
+主网信息
 
-  |name|value| 
-    |:---|:---|
-  |NetworkName|Ontology Network| 
-  |ParentChain|Ethereum Mainnet| 
-  |chainId|5851| 
-  |Gas Token|ONG Token| 
-  |RPC|http://localhost:20339|
-  |Websocket|http://localhost:20339| 
-  |Block Explorer|https://explorer.ont.io/|
+|name|value| 
+|:---|:---|
+|NetworkName|Ontology Network| 
+|ParentChain|Ethereum Mainnet| 
+|chainId|5851| 
+|Gas Token|ONG Token| 
+|RPC|http://localhost:20339|
+|Websocket|http://localhost:20339| 
+|Block Explorer|https://explorer.ont.io/|
 
 测试网信息
 
@@ -139,23 +145,24 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 |Websocket|http://localhost:20339| 
 |Block Explorer|https://explorer.ont.io/|
 
-###3.2 ontology链上EVM资产列表
+### 3.2 ontology链上EVM资产列表
 
-  |tokenName|tokenAddress|
-    |:---|:---|
-  |ONG|0x00000000000000000000000000000000000000001|
+|tokenName|tokenAddress|
+|:---|:---|
+|ONG|0x00000000000000000000000000000000000000001|
 
-###3.3 oep4资产列表
+### 3.3 oep4资产列表
 
 
-###3.4 手续费ONG
-    - 如何获得ONG 主网上的和测试网上的
+### 3.4 手续费ONG
+
+如何获得ONG 主网上的和测试网上的
 
 ## ethereum链上的资产跨到ontology链上
 
 [PolyBridge](https://bridge.poly.network/)
 
-##4、 ontology链上 NEOVM资产和EVM资产交换
+## 4、 ontology链上 NEOVM资产和EVM资产交换
 
 - 可以通过bridge合约进行转换
 
@@ -163,7 +170,7 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 
 这部分我们会使用`hardhat`工具开发部署和测试EVM合约，并且会在本地起一个ontology节点用于测试合约。
 
-###5.1 环境准备
+### 5.1 环境准备
 
 - nodejs
 
@@ -188,9 +195,9 @@ $ make all
 2. 启动[本地测试节点](https://github.com/ontio/ontology#local-privatenet)
 
 
-###5.2 红包合约设计
+### 5.2 红包合约设计
 
-####5.2.1 红包合约逻辑
+#### 5.2.1 红包合约逻辑
 我们会开发一本发红包的合约例子，主要提供以下功能
    - 发红包
    - 领红包
@@ -213,7 +220,7 @@ struct Packet {
     uint receivedIndex; // Number of red packets received
 }
 ```
-####5.2.2 定义合约事件
+#### 5.2.2 定义合约事件
 
 在合约执行的过程中，我们可以通过添加事件，来追溯合约执行流程。在该合约例子中，我们会设计两个事件，
 一个是发红包时，合约会生成红包的ID,该ID要通过事件推送给调用者；另外一个事件是领取红包时，需要推送一个事件用来记录用去领取的红包ID和token数量。
@@ -222,7 +229,7 @@ event SendRedPacket(uint packetId, uint amount);
 event ReceiveRedPacket(uint packetId, uint amount);
 ```
 
-####5.2.3 定义函数
+#### 5.2.3 定义函数
    
 - `sendRedPacket`
 
@@ -272,9 +279,9 @@ function receivePacket(uint packetId) public payable returns (bool) {
 ```
 [合约完整的代码](https://github.com/lucas7788/hardhatdemo/blob/master/contracts/Redpacket.sol)
 
-###5.3 使用hardhat编译和测试合约
+### 5.3 使用hardhat编译和测试合约
 
-####5.3.1 使用如下命令创建一个hardhat项目
+#### 5.3.1 使用如下命令创建一个hardhat项目
 ```
 mkdir hardhatdemo
 cd hardhatdemo
@@ -282,12 +289,12 @@ npm init
 npm install --save-dev hardhat
 ```
 
-####5.3.2 启动本地节点
+#### 5.3.2 启动本地节点
 ```
 ./ontology --testmode
 ```
 
-####5.3.3 修改hardhat.config.js文件
+#### 5.3.3 修改hardhat.config.js文件
 
 添加本地节点配置信息
 ```
@@ -322,12 +329,12 @@ accounts字段指定的私钥数组，对应的地址需要有本地测试节点
 为了方便开发者操作，这两个私钥对应的base58编码的地址分别是 `AS3FBa1i2EiySRVEhzg5LRCGuBCG1qVfsL` 和 `ATu1iXMk2DcwiG5LVvoouc82NNNtJ5Hv6G`。向这两个地址转ONG[请参考](https://github.com/ontio/ontology#ont-transfer-sample)
 
 
-####5.3.4 红包合约
+#### 5.3.4 红包合约
 
 把之前的红包合约代码文件放到 `contracts`文件夹下，为了支持ERC20的转账，我们还需要
 `EIP20Interface.sol`, `UniversalERC20.sol`, 和 `TokenDemo.sol`文件，可以从[此处](https://github.com/lucas7788/hardhatdemo/tree/master/contracts)下载相关文件
 
-####5.3.5 在test文件夹下添加测试代码
+#### 5.3.5 在test文件夹下添加测试代码
 ```
 describe("RedPacket", function () {
     let tokenDemo, redPacket, owner, acct1, assetAmount, packetAmount;
@@ -364,7 +371,7 @@ describe("RedPacket", function () {
 });
 ```
 
-####5.3.6 编译合约
+#### 5.3.6 编译合约
 
 在项目根目录执行如下的命令编译合约，
 ```
@@ -375,7 +382,7 @@ Compilation finished successfully
 该命令执行完成后会生成如下的文件夹
 ![avatar](compile2.jpg)
 
-####5.3.7 测试合约
+#### 5.3.7 测试合约
 ```
 npx hardhat test
 ```
