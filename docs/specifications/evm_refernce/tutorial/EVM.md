@@ -111,12 +111,17 @@ remix环境如下图
 
 ### 2.2 使用Truffle
 
+完整的测试代码在[这里](https://github.com/lucas7788/truffledemo)
+
 #### 2.2.1 安装truffle
 
 [truffle教程](https://www.trufflesuite.com/docs/truffle/quickstart)
 
 #### 2.2.2 配置truffle-config
-truffle-config 配置如下
+
+- 修改truffle-config，如下
+- 创建`.secret`存储测试私钥
+
 ```
 const HDWalletProvider = require('@truffle/hdwallet-provider');
 
