@@ -402,4 +402,14 @@ Compilation finished successfully
 npx hardhat test
 ```
 执行结果如下图
-![avatar](./test_result.jpg)
+```
+sss@sss hardhatdemo % npx hardhat test
+  RedPacket
+    ✓ token
+    ✓ sendRedPacket (16159ms)
+
+
+  2 passing (41s)
+```
+
+< img src="./test_result.jpg" style="zoom:50%;" />
