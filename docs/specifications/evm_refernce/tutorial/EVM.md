@@ -84,7 +84,7 @@ contract HelloWorld {
 #### 2.1.2 编译合约
 
 点击下图中的`Compile helloworld.sol`按钮编译合约。
-![avatar](./compile.jpg)
+![avatar](./compile.jpg){:width="50px" height="100px"}
 
 #### 2.1.3 部署合约
 
@@ -100,8 +100,14 @@ contract HelloWorld {
 - 输入Chain ID:12345
 - 输入区块链浏览器url - "https://explorer.ont.io/"
 
-#### 2.1.4 调用合约
+remix环境如下图
 
+![deploy contract](./remix_deploy.jpg)
+
+#### 2.1.4 调用合约
+合约部署后，我们就可以调用合约中的方法了，部署的时候，会将"hello"字符串存入合约，
+现在我们调用合约的"message"方法查询，如下图所示
+![invoke contract](./remix_invoke.jpg)
 
 ### 2.2 使用Truffle
 
