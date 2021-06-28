@@ -84,11 +84,11 @@ contract HelloWorld {
 #### 2.1.2 编译合约
 
 点击下图中的`Compile helloworld.sol`按钮编译合约。
-![avatar](./compile.jpg){:width="50px" height="100px"}
+![avatar](./compile.jpg)
 
 #### 2.1.3 部署合约
 
-现在需要把我们编译好的合约部署到ontology链上，为了能链上ontology节点，
+现在需要把我们编译好的合约部署到ontology链上，为了访问ontology节点，
 我们可以用Metamask这样的wallet来完成。
 
 打开Metamask,设置网络，如下图所示
@@ -113,9 +113,116 @@ remix环境如下图
 
 #### 2.2.1 安装truffle
 
-#### 2.2.2 配置truffle-config
+[truffle教程](https://www.trufflesuite.com/docs/truffle/quickstart)
 
+#### 2.2.2 配置truffle-config
+truffle-config 配置如下
+```
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+
+const fs = require('fs');
+const mnemonic = fs.readFileSync(".secret").toString().trim();
+
+module.exports = {
+  networks: {
+    ontology: {
+     provider: () => new HDWalletProvider(mnemonic, `http://127.0.0.1:20339`),
+     network_id: 12345,
+     port: 20339,            // Standard Ethereum port (default: none)
+     timeoutBlocks: 200,
+     gas:800000,
+     skipDryRun: true
+    }
+  },
+  compilers: {
+    solc: {
+      version: "0.5.16",    // Fetch exact version from solc-bin (default: truffle's version)
+      docker: false,        // Use "0.5.1" you've installed locally with docker (default: false)
+      settings: {          // See the solidity docs for advice about optimization and evmVersion
+       optimizer: {
+         enabled: true,
+         runs: 200
+       },
+       evmVersion: "byzantium"
+      }
+    }
+  }
+};
+```
 #### 2.2.3 部署合约到ontology链
+执行如下的命令部署合约
+```
+truffle migrate --network ontology
+```
+执行结果如下
+```
+Compiling your contracts...
+===========================
+> Everything is up to date, there is nothing to compile.
+
+
+
+Starting migrations...
+======================
+> Network name:    'ontology'
+> Network id:      12345
+> Block gas limit: 0 (0x0)
+
+
+1_initial_migration.js
+======================
+
+   Replacing 'Migrations'
+   ----------------------
+   > transaction hash:    0x9019551f3d60611e1bc6b323f3cf3020d15c8aeb06833d14ff864e24622884aa
+   > Blocks: 0            Seconds: 4
+   > contract address:    0x53e137A51CfD1E1b088E0d921eB5dBCF9cFa955E
+   > block number:        6264
+   > block timestamp:     1624876467
+   > account:             0x4e7946D1Ee8f8703E24C6F3fBf032AD4459c4648
+   > balance:             0.00001
+   > gas used:            172969 (0x2a3a9)
+   > gas price:           0 gwei
+   > value sent:          0 ETH
+   > total cost:          0 ETH
+
+
+   > Saving migration to chain.
+   > Saving artifacts
+   -------------------------------------
+   > Total cost:                   0 ETH
+
+
+2_deploy_migration.js
+=====================
+
+   Replacing 'HelloWorld'
+   ----------------------
+   > transaction hash:    0xf8289b96f2496a8c940ca38d736a554a90f64d927b689921781619499906721b
+   > Blocks: 0            Seconds: 4
+   > contract address:    0xfbff9bd546B0e0D4b40f6f758847b70050d01b37
+   > block number:        6266
+   > block timestamp:     1624876479
+   > account:             0x4e7946D1Ee8f8703E24C6F3fBf032AD4459c4648
+   > balance:             0.00001
+   > gas used:            243703 (0x3b7f7)
+   > gas price:           0 gwei
+   > value sent:          0 ETH
+   > total cost:          0 ETH
+
+hello contract address: 0xfbff9bd546B0e0D4b40f6f758847b70050d01b37
+
+   > Saving migration to chain.
+   > Saving artifacts
+   -------------------------------------
+   > Total cost:                   0 ETH
+
+
+Summary
+=======
+> Total deployments:   2
+> Final cost:          0 ETH
+```
 
 ### 2.3 使用Hardhat
 
