@@ -226,11 +226,54 @@ Summary
 
 ### 2.3 使用Hardhat
 
+完整的例子在[这里](https://github.com/lucas7788/hardhatdemo)
+
 #### 2.3.1 搭建Hardhat开发环境
+[hardhat安装教程](https://hardhat.org/getting-started/)
 
 #### 2.3.2 配置hardhat-config
+- 修改hardhat.config.js文件，如下面的代码
+- 创建".secret"用于存储用户的私钥
+
+```
+require("@nomiclabs/hardhat-waffle");
+
+module.exports = {
+    defaultNetwork: "ontology_testnet",
+    networks: {
+        hardhat: {},
+        ontology_testnet: {
+            url: "http://127.0.0.1:20339",
+            chainId: 12345,
+            gasPrice:500,
+            gas:2000000,
+            timeout:10000000,
+            accounts: ["59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d","6b98389b8bb98ccaa68876efdcbacc4ae923600023be6b4091e69daa59ba9a9d"]
+        }
+    },
+    solidity: {
+        version: "0.8.0",
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 200
+            }
+        }
+    },
+};
+```
 
 #### 2.3.3 部署合约到ontology链
+
+在项目根目录下执行下面的命令
+```
+$ npx hardhat run scripts/sample-script.js --network ontology_testnet
+```
+执行结果
+```
+sss@sss hardhatdemo % npx hardhat run scripts/sample-script.js --network ontology_testnet
+RedPacket deployed to: 0xB105388ac7F019557132eD6eA90fB4BAaFde6E81
+```
 
 ## 3 网络详情
 
