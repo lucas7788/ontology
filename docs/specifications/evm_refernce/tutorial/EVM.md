@@ -394,7 +394,19 @@ Compilation finished successfully
 ```
 
 该命令执行完成后会生成如下的文件夹
-![avatar](./compile2.jpg)
+
+```
+.
+├── artifacts
+├── cache
+├── contracts
+├── hardhat.config.js
+├── node_modules
+├── package-lock.json
+├── package.json
+├── scripts
+└── test
+```
 
 #### 6.3.7 测试合约
 
@@ -411,5 +423,3 @@ sss@sss hardhatdemo % npx hardhat test
 
   2 passing (41s)
 ```
-
-< img src="./test_result.jpg" style="zoom:50%;" />
