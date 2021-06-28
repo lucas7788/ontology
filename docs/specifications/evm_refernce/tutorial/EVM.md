@@ -49,58 +49,59 @@ ethereum合约可以用solidity语言开发，[solidity教程](https://docs.soli
 ### 2.1 使用Remix工具
 
 这是一个hello world 合约样例，这个合约可以用于存一段字符串，并且查询。 RemixIDE的使用
-
-      [Remix IDE](https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.1+commit.df193b15.js)是一个在线的ethereum合约开发工具。
+[Remix IDE](https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.1+commit.df193b15.js)是一个在线的ethereum合约开发工具。
 
 #### 2.1.1 新建合约
 
-      ```
-      // Specifies that the source code is for a version
-      // of Solidity greater than 0.5.10
-      pragma solidity ^0.5.10;
-      
-      // A contract is a collection of functions and data (its state)
-      // that resides at a specific address on the Ethereum blockchain.
-      contract HelloWorld {
-      
-          // The keyword "public" makes variables accessible from outside a contract
-          // and creates a function that other contracts or SDKs can call to access the value
-          string public message;
-      
-          // A special function only run during the creation of the contract
-          constructor(string memory initMessage) public {
-              // Takes a string value and stores the value in the memory data storage area,
-              // setting `message` to that value
-              message = initMessage;
-          }
-      
-          // A publicly accessible function that takes a string as a parameter
-          // and updates `message`
-          function update(string memory newMessage) public {
-              message = newMessage;
-          }
-      }
-      ```
+```
+// Specifies that the source code is for a version
+// of Solidity greater than 0.5.10
+pragma solidity ^0.5.10;
+
+// A contract is a collection of functions and data (its state)
+// that resides at a specific address on the Ethereum blockchain.
+contract HelloWorld {
+
+  // The keyword "public" makes variables accessible from outside a contract
+  // and creates a function that other contracts or SDKs can call to access the value
+  string public message;
+
+  // A special function only run during the creation of the contract
+  constructor(string memory initMessage) public {
+      // Takes a string value and stores the value in the memory data storage area,
+      // setting `message` to that value
+      message = initMessage;
+  }
+
+  // A publicly accessible function that takes a string as a parameter
+  // and updates `message`
+  function update(string memory newMessage) public {
+      message = newMessage;
+  }
+}
+```
 
 #### 2.1.2 编译合约
 
-      点击下图中的`Compile helloworld.sol`按钮编译合约。
-      ![avatar](compile.jpg)
+点击下图中的`Compile helloworld.sol`按钮编译合约。
+![avatar](./compile.jpg)
 
 #### 2.1.3 部署合约
 
-      现在需要把我们编译好的合约部署到ontology链上，为了能链上ontology节点，
-      我们可以用Metamask这样的wallet来完成。
-      
-      打开Metamask,设置网络，如下图所示
-      
-      ![avatar](metamask.jpg)
-      - 输入网络名 - "ontology testnet"
-      - 输入节点url - "http://localhost:20339"
-      - 输入Chain ID:12345
-      - 输入区块链浏览器url - "https://explorer.ont.io/"
+现在需要把我们编译好的合约部署到ontology链上，为了能链上ontology节点，
+我们可以用Metamask这样的wallet来完成。
+
+打开Metamask,设置网络，如下图所示
+
+![avatar](./metamask.jpg)
+
+- 输入网络名 - "ontology testnet"
+- 输入节点url - "http://localhost:20339"
+- 输入Chain ID:12345
+- 输入区块链浏览器url - "https://explorer.ont.io/"
 
 #### 2.1.4 调用合约
+
 
 ### 2.2 使用Truffle
 
@@ -393,10 +394,12 @@ Compilation finished successfully
 ```
 
 该命令执行完成后会生成如下的文件夹
-![avatar](compile2.jpg)
+![avatar](./compile2.jpg)
 
 #### 6.3.7 测试合约
 
 ```
 npx hardhat test
 ```
+执行结果如下图
+![avatar](./test_result.jpg)
