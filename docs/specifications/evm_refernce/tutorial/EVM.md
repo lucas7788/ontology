@@ -37,11 +37,11 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
             * [5.3.6 编译合约](#536-编译合约)
             * [5.3.7 测试合约](#537-测试合约)
 
-## 1、Developer Quick Start
+## 1 Developer Quick Start
 
 如果你已经是一名ethereum开发者那么你同时也是一名ontology开发者。
 
-## 2、部署EVM合约到ontology链
+## 2 部署EVM合约到ontology链
 
   ethereum合约可以用solidity语言开发，[solidity教程](https://docs.soliditylang.org/en/v0.8.6/)
 
@@ -117,7 +117,7 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 
 #### 2.3.3 部署合约到ontology链
 
-## 3、网络详情
+## 3 网络详情
 
 ### 3.1 节点网络
 
@@ -162,11 +162,11 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 
 [PolyBridge](https://bridge.poly.network/)
 
-## 4、 ontology链上 NEOVM资产和EVM资产交换
+## 4 ontology链上 NEOVM资产和EVM资产交换
 
 - 可以通过bridge合约进行转换
 
-## 5、在ontology链上开发一个新的EVM合约
+## 5 在ontology链上开发一个新的EVM合约
 
 这部分我们会使用`hardhat`工具开发部署和测试EVM合约，并且会在本地起一个ontology节点用于测试合约。
 
