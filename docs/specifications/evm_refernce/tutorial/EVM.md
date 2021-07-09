@@ -79,7 +79,7 @@ ethereum合约可以用solidity语言开发，[solidity教程](https://docs.soli
 
 ### 2.1 使用Remix工具
 
-这是一个hello world 合约样例，这个合约可以用于存一段字符串，并且查询。 RemixIDE的使用
+这是一个hello world 合约样例，这个合约可以用于存一段字符串，并且查询。 RemixIDE的使用教程
 [Remix IDE](https://remix.ethereum.org/#optimize=false&runs=200&evmVersion=null&version=soljson-v0.8.1+commit.df193b15.js)是一个在线的ethereum合约开发工具。
 
 #### 2.1.1 Remix环境初始化
