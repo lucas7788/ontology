@@ -179,8 +179,8 @@ const mnemonic = fs.readFileSync(".secret").toString().trim();
 module.exports = {
   networks: {
     ontology: {
-     provider: () => new HDWalletProvider(mnemonic, `http://127.0.0.1:20339`),
-     network_id: 12345,
+     provider: () => new HDWalletProvider(mnemonic, `http://polaris2.ont.io:20339`),
+     network_id: 5851,
      port: 20339,            // Standard Ethereum port (default: none)
      timeoutBlocks: 200,
      gas:800000,
@@ -299,8 +299,8 @@ module.exports = {
     networks: {
         hardhat: {},
         ontology_testnet: {
-            url: "http://127.0.0.1:20339",
-            chainId: 12345,
+            url: "http://polaris2.ont.io:20339",
+            chainId: 5851,
             gasPrice:500,
             gas:2000000,
             timeout:10000000,
