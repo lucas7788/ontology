@@ -71,7 +71,9 @@ ontology目前已支持EVM合约，开发者可以在ontology链上部署和调�
 
 ## 1 Developer Quick Start
 
-如果你已经是一名ethereum开发者那么你同时也是一名ontology开发者。ethereum相关的工具，Truffle, Remix, Web3js，同样也可以用用来和ontology链上的EVM合约交互。
+ontology目前已完全支持EVM合约，并且已支持ethereum链的节点调用方式，也就是说我们可以使用ethereum相关的合约开发工具在ontology链上开发部署测试EVM合约，比如Truffle, Remix,
+Web3js等工具。
+`go-ethereum`项目里面的`ethclient`包可以用来直接和ontology节点上的EVM合约交互。
 
 ## 2 部署EVM合约到ontology链
 
@@ -94,7 +96,6 @@ ethereum合约可以用solidity语言开发，[solidity教程](https://docs.soli
 
 ![image-20210526143301031](./image-20210526143301031.png)
 
-
 ```solidity
 // Specifies that the source code is for a version
 // of Solidity greater than 0.5.10
@@ -104,22 +105,22 @@ pragma solidity ^0.5.10;
 // that resides at a specific address on the Ethereum blockchain.
 contract HelloWorld {
 
-   // The keyword "public" makes variables accessible from outside a contract
-   // and creates a function that other contracts or SDKs can call to access the value
-   string public message;
+    // The keyword "public" makes variables accessible from outside a contract
+    // and creates a function that other contracts or SDKs can call to access the value
+    string public message;
 
-   // A special function only run during the creation of the contract
-   constructor(string memory initMessage) public {
-       // Takes a string value and stores the value in the memory data storage area,
-       // setting `message` to that value
-       message = initMessage;
-   }
+    // A special function only run during the creation of the contract
+    constructor(string memory initMessage) public {
+        // Takes a string value and stores the value in the memory data storage area,
+        // setting `message` to that value
+        message = initMessage;
+    }
 
-   // A publicly accessible function that takes a string as a parameter
-   // and updates `message`
-   function update(string memory newMessage) public {
-       message = newMessage;
-   }
+    // A publicly accessible function that takes a string as a parameter
+    // and updates `message`
+    function update(string memory newMessage) public {
+        message = newMessage;
+    }
 }
 ```
 
@@ -130,24 +131,22 @@ contract HelloWorld {
 #### 2.1.3 部署合约
 
 - 现在我们可以将合约部署到Ontology网络中，在部署合约之前，我们需要将metamask连接到本体网络。
-- 选择自定义RPC网络，输入网络名字“Ontology TestNet”，在URL输入本体的RPC地址“”，Chain ID选择“”，最后保存我们输入的配置。
+- 选择自定义RPC网络，输入如下的配置信息，最后保存我们输入的配置。
     - 输入网络名 - "ontology testnet"
-    - 输入节点url - "http://localhost:20339"
-    - 输入Chain ID:12345
-    - 输入区块链浏览器url - "https://explorer.ont.io/"
+    - 输入节点url - "http://polaris1.ont.io:20339"或"http://polaris2.ont.io:20339"或"http://polaris3.ont.io:20339"
+    - 输入Chain ID - 5851
+    - 输入区块链浏览器url - "https://explorer.ont.io/testnet"
 - 去本体[Faucet地址](https://developer.ont.io/)领取ONG。
 - 现在我们可以将HelloWorld合约部署到Ontology网络上。
 - 在Environment中选择Injected Web3选项，点击deploy完成合约部署。
 - ![RemixIDE_Step1](./rpc.png)
 
-
 remix环境如下图
 ![deploy contract](./remix_deploy.jpg)
 
-
 #### 2.1.4 调用合约
-合约部署后，我们就可以调用合约中的方法了，部署的时候，会将"hello"字符串存入合约，
-现在我们调用合约的"message"方法查询，如下图所示
+
+合约部署后，我们就可以调用合约中的方法了，部署的时候，会将"hello"字符串存入合约， 现在我们调用合约的"message"方法查询，如下图所示
 ![invoke contract](./remix_invoke.jpg)
 
 ### 2.2 使用Truffle
@@ -204,13 +203,17 @@ module.exports = {
   }
 };
 ```
+
 #### 2.2.3 部署合约到ontology链
 
 执行如下的命令部署合约
+
 ```
 truffle migrate --network ontology
 ```
+
 显示如下输出则代表部署成功，在编写测试脚本是注意尽量不要使用以太坊代币的单位（如wei，gwei，ether等）。
+
 ```
 Compiling your contracts...
 ===========================
@@ -281,9 +284,11 @@ Summary
 完整的例子在[这里](https://github.com/lucas7788/hardhatdemo)
 
 #### 2.3.1 搭建Hardhat开发环境
+
 [hardhat安装教程](https://hardhat.org/getting-started/)
 
 #### 2.3.2 配置hardhat-config
+
 - 修改hardhat.config.js文件，如下面的代码
 - 创建".secret"用于存储测试用户的私钥
 
@@ -318,10 +323,13 @@ module.exports = {
 #### 2.3.3 部署合约到ontology链
 
 在项目根目录下执行下面的命令
+
 ```
 $ npx hardhat run scripts/sample-script.js --network ontology_testnet
 ```
+
 执行结果
+
 ```
 sss@sss hardhatdemo % npx hardhat run scripts/sample-script.js --network ontology_testnet
 RedPacket deployed to: 0xB105388ac7F019557132eD6eA90fB4BAaFde6E81
@@ -335,37 +343,33 @@ RedPacket deployed to: 0xB105388ac7F019557132eD6eA90fB4BAaFde6E81
 
 |name|value| 
 |:---|:---|
-|NetworkName|Ontology Network| 
-|ParentChain|Ethereum Mainnet| 
-|chainId|5851| 
+|NetworkName|Ontology Mainnet|
+|chainId|58| 
 |Gas Token|ONG Token| 
-|RPC|http://localhost:20339|
-|Websocket|http://localhost:20339| 
+|RPC|http://dappnode1.ont.io:20339,http://dappnode2.ont.io:20339,http://dappnode3.ont.io:20339,http://dappnode4.ont.io:20339|
 |Block Explorer|https://explorer.ont.io/|
 
 测试网信息
 
 |name|value| 
 |:---|:---|
-|NetworkName|Ontology Network| 
-|ParentChain|Ethereum Mainnet| 
+|NetworkName|Ontology Testnet|
 |chainId|5851| 
 |Gas Token|ONG Token| 
-|RPC|http://localhost:20339|
-|Websocket|http://localhost:20339| 
-|Block Explorer|https://explorer.ont.io/|
+|RPC|http://polaris1.ont.io:20339, http://polaris2.ont.io:20339, http://polaris3.ont.io:20339,http://polaris4.ont.io:20339|
+|Block Explorer|https://explorer.ont.io/testnet|
 
 ### 3.2 ontology链上EVM资产列表
 
 |tokenName|tokenAddress|
 |:---|:---|
-|ONG|0x00000000000000000000000000000000000000001|
+|ONG|0x00000000000000000000000000000000000000002|
 
 ### 3.3 oep4资产列表
 
 ### 3.4 手续费ONG
 
-如何获得ONG 主网上的和测试网上的
+领取测试币[ONG](https://developer.ont.io/)
 
 ## 4 钱包使用
 
@@ -380,96 +384,97 @@ Metamask是一个用户用于使用自己设定密码管理以太坊钱包私钥
 
 4.1.1 初始化Web3
 
-   Step 1:
+Step 1:
 
-   在你的DApp内安装web3环境:
+在你的DApp内安装web3环境:
+
    ```
    npm install --save web3
    ```
 
-   生成一个新的文件，命名为 `web3.js` ，将以下代码复制到该文件:
+生成一个新的文件，命名为 `web3.js` ，将以下代码复制到该文件:
 
    ```js
    import Web3 from 'web3';
-   
-   const getWeb3 = () => new Promise((resolve) => {
-     window.addEventListener('load', () => {
-       let currentWeb3;
-   
-       if (window.ethereum) {
-         currentWeb3 = new Web3(window.ethereum);
-         try {
-           // Request account access if needed
-           window.ethereum.enable();
-           // Acccounts now exposed
-           resolve(currentWeb3);
-         } catch (error) {
-           // User denied account access...
-           alert('Please allow access for the app to work');
-         }
-       } else if (window.web3) {
-         window.web3 = new Web3(web3.currentProvider);
-         // Acccounts always exposed
-         resolve(currentWeb3);
-       } else {
-         console.log('Non-Ethereum browser detected. You should consider trying MetaMask!');
-       }
-     });
-   });
-   
-   export default getWeb3;
+
+const getWeb3 = () => new Promise((resolve) => {
+    window.addEventListener('load', () => {
+        let currentWeb3;
+
+        if (window.ethereum) {
+            currentWeb3 = new Web3(window.ethereum);
+            try {
+                // Request account access if needed
+                window.ethereum.enable();
+                // Acccounts now exposed
+                resolve(currentWeb3);
+            } catch (error) {
+                // User denied account access...
+                alert('Please allow access for the app to work');
+            }
+        } else if (window.web3) {
+            window.web3 = new Web3(web3.currentProvider);
+            // Acccounts always exposed
+            resolve(currentWeb3);
+        } else {
+            console.log('Non-Ethereum browser detected. You should consider trying MetaMask!');
+        }
+    });
+});
+
+export default getWeb3;
    ```
 
-   简言之，只要你在你的Chrome浏览器里安装了Metamask插件，你就可以使用该插件注入的`ethereum`全局变量。
+简言之，只要你在你的Chrome浏览器里安装了Metamask插件，你就可以使用该插件注入的`ethereum`全局变量。
 
-   Step 2:
+Step 2:
 
-   在你的client里引入如下代码,
+在你的client里引入如下代码,
 
    ```js
    import getWeb3 from '/path/to/web3';
    ```
 
-   调用如下函数:
+调用如下函数:
 
    ```js
      getWeb3()
-       .then((result) => {
-         this.web3 = result;// we instantiate our contract next
-       });
+    .then((result) => {
+        this.web3 = result;// we instantiate our contract next
+    });
    ```
 
 4.1.2 获取账户
 
-   我们需要从以上创建的web3实例中获取一个账户来发送交易。
+我们需要从以上创建的web3实例中获取一个账户来发送交易。
 
    ```js
      this.web3.eth.getAccounts()
-     .then((accounts) => {
-       this.account = accounts[0];
-     })
+    .then((accounts) => {
+        this.account = accounts[0];
+    })
    ```
 
-   `getAccounts()` 函数 返回了metamask中的账户, `accounts[0]` 是当前用户的.
+`getAccounts()` 函数 返回了metamask中的账户, `accounts[0]` 是当前用户的.
 
 4.1.3 初始化你的合约
 
 4.1.4 调用函数
 
-   现在你可以使用你刚才创建的合约实例调用任何你想调用的函数
+现在你可以使用你刚才创建的合约实例调用任何你想调用的函数
 
-   注: - 你可以使用 `send()` 函数调用合约来改变合约状态
+注: - 你可以使用 `send()` 函数调用合约来改变合约状态
 
-   ​	 - 调用 `call()` 函数完成合约的预执行操作
+​ - 调用 `call()` 函数完成合约的预执行操作
 
 **Calling `call()` Functions**
 
 ```js
   this.myContractInstance.methods.myMethod(myParams)
-  .call()
-  .then (
-    // do stuff with returned values
-  )
+    .call()
+    .then(
+        // do stuff with returned values
+    )
 ```
 
 **Calling `send()` Functions**
@@ -487,7 +492,6 @@ from: this.account,gasPrice: 0
 ## 5 ethereum链上的资产跨到ontology链上
 
 [PolyBridge](https://bridge.poly.network/)
-
 
 ## 6 在ontology链上开发一个新的EVM合约
 
@@ -607,9 +611,7 @@ function receivePacket(uint packetId) public payable returns (bool) {
 
 [合约完整的代码](https://github.com/lucas7788/hardhatdemo/blob/master/contracts/Redpacket.sol)
 
-
 ### 6.3 使用hardhat编译和测试合约
-
 
 #### 6.3.1 使用如下命令创建一个hardhat项目
 
@@ -737,7 +739,9 @@ Compilation finished successfully
 ```
 npx hardhat test
 ```
+
 执行结果如下图
+
 ```
 sss@sss hardhatdemo % npx hardhat test
   RedPacket
@@ -756,7 +760,6 @@ sss@sss hardhatdemo % npx hardhat test
 
 返回当前连接网络的ID。
 
-
 - 参数：无
 - 返回值
     - `String` - 当前连接网络的ID，"1"表示Ontology Mainnet
@@ -773,7 +776,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"net_version","params":[],"id":67
 
 ```json
 {
-  "id":67,
+  "id": 67,
   "jsonrpc": "2.0",
   "result": "1"
 }
@@ -841,6 +844,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id
     - `QUANTITY|TAG`： 整数块编号，或者字符串"latest", "earliest" 或 "pending"
 
 参数示例：
+
 ```
 params: [
    '0x407d73d8a49eeb85d32cf465507dd71d507100c1',
@@ -849,7 +853,7 @@ params: [
 ```
 
 - 返回值
-  - `QUANTITY`： 当前余额，单位：wei
+    - `QUANTITY`： 当前余额，单位：wei
 
 - 示例代码
 
@@ -964,7 +968,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":7
     - `QUANTITY|TAG`: 整数块号，或字符串"latest"、"earliest" 或"pending"（该参数为无效参数）
 
 - 返回值
-    `DATA`: 指定存储位置的值
+  `DATA`: 指定存储位置的值
 
 - 示例代码
 
@@ -1069,7 +1073,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionCount","params
 返回指定块内的使用EVM虚拟机交易数量，使用哈希来指定块。
 
 - 参数
-  - `DATA`: 32字节，块哈希
+    - `DATA`: 32字节，块哈希
 
 ```
 params: [
@@ -1078,7 +1082,7 @@ params: [
 ```
 
 - 返回值
-  - `QUANTITY` - 指定块内的交易数量，整数
+    - `QUANTITY` - 指定块内的交易数量，整数
 
 - 示例代码
 
@@ -1103,7 +1107,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByHa
 返回指定块内的交易数量，使用块编号指定块。
 
 - 参数
-  - `QUANTITY|TAG`: 整数块编号，或字符串"earliest"、"latest"或"pending"
+    - `QUANTITY|TAG`: 整数块编号，或字符串"earliest"、"latest"或"pending"
 
 ```
 params: [
@@ -1112,7 +1116,7 @@ params: [
 ```
 
 - 返回值
-  - `QUANTITY`: 指定块内的交易数量
+    - `QUANTITY`: 指定块内的交易数量
 
 - 示例代码
 
@@ -1137,8 +1141,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockTransactionCountByNu
 返回指定地址的代码。
 
 - 参数
-  - `DATA`: 20字节，地址
-  - `QUANTITY|TAG`: 整数块编号，或字符串"latest"、"earliest" 或"pending"（无效参数）
+    - `DATA`: 20字节，地址
+    - `QUANTITY|TAG`: 整数块编号，或字符串"latest"、"earliest" 或"pending"（无效参数）
 
 ```
 params: [
@@ -1148,7 +1152,7 @@ params: [
 ```
 
 - 返回值
-  - `DATA`: 指定地址处的代码
+    - `DATA`: 指定地址处的代码
 
 - 示例代码
 
@@ -1173,10 +1177,9 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getCode","params":["0xa94f53
 返回交易执行的日志。
 
 - 参数
-  - `txHash`: 交易哈希
+    - `txHash`: 交易哈希
 
-- 返回值
-返回交易执行日志
+- 返回值 返回交易执行日志
 
 - 示例代码
 
@@ -1222,10 +1225,10 @@ curl -X POST --data '{
 为签名交易创建一个新的消息调用交易或合约。
 
 - 参数
-  - `DATA`: 签名的交易数据
+    - `DATA`: 签名的交易数据
 
 - 返回值
-  - `DATA`: 32字节，交易哈希，如果交易未生效则返回全0哈希。
+    - `DATA`: 32字节，交易哈希，如果交易未生效则返回全0哈希。
 
 当创建合约时，在交易生效后，使用`eth_getTransactionReceipt`获取合约地址。
 
@@ -1252,17 +1255,17 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params"
 立刻执行一个新的消息调用，无需在区块链上创建交易。
 
 - 参数
-  - `Object`: 交易调用对象
-    - from: DATA, 20 Bytes - 发送交易的原地址，可选
-    - to: DATA, 20 Bytes - 交易目标地址
-    - gas: QUANTITY - 交易可用gas量，可选。eth_call不消耗gas，但是某些执行环节需要这个参数
-    - gasPrice: QUANTITY - gas价格，可选
-    - value: QUANTITY - 交易发送的以太数量，可选
-    - data: DATA - 方法签名和编码参数的哈希，可选
-    - QUANTITY|TAG - 整数块编号，或字符串"latest"、"earliest"或"pending"
+    - `Object`: 交易调用对象
+        - from: DATA, 20 Bytes - 发送交易的原地址，可选
+        - to: DATA, 20 Bytes - 交易目标地址
+        - gas: QUANTITY - 交易可用gas量，可选。eth_call不消耗gas，但是某些执行环节需要这个参数
+        - gasPrice: QUANTITY - gas价格，可选
+        - value: QUANTITY - 交易发送的以太数量，可选
+        - data: DATA - 方法签名和编码参数的哈希，可选
+        - QUANTITY|TAG - 整数块编号，或字符串"latest"、"earliest"或"pending"
 
 - 返回值
-  - `DATA`: 所执行合约的返回值
+    - `DATA`: 所执行合约的返回值
 
 - 示例代码
 
@@ -1291,7 +1294,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_call","params":[{see above}]
 参考`eth_call`调用的参数，所有的属性都是可选的。如果没有指定gas用量上限，geth将使用挂起块的gas上限。 在这种情况下，返回的gas估算量可能不足以执行实际的交易。
 
 - 返回值
-  - `QUANTITY`: gas用量估算值
+    - `QUANTITY`: gas用量估算值
 
 - 示例代码
 
@@ -1318,7 +1321,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_estimateGas","params":[{see 
 - 参数
     - `QUANTITY|TAG`: 整数块编号，或字符串"earliest"、"latest" 或"pending"
     - `Boolean`: 为true时返回完整的交易对象，否则仅返回交易哈希
-    
+
 - 返回值
 
 `Object` - 匹配的块对象，如果未找到块则返回null，结构如下：
@@ -1411,7 +1414,7 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0
 返回指定哈希对应的交易。
 
 - 参数
-  - `DATA`: 32 字节 - 交易哈希
+    - `DATA`: 32 字节 - 交易哈希
 
 - 返回值
 
@@ -1640,7 +1643,7 @@ curl -X POST --data '{    "jsonrpc": "2.0",
 - 参数
 
 - 返回值
-  - `String`: 当前连接网络的ID
+    - `String`: 当前连接网络的ID
 
 - 示例代码
 
