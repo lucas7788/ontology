@@ -746,6 +746,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		result.CrossStates = append(result.CrossStates, crossStateHashes...)
 	}
 	result.Hash = overlay.ChangeHash()
+	log.Infof("result.Hash:%s", result.Hash.ToHexString())
 	result.WriteSet = overlay.GetWriteSet()
 	if len(result.CrossStates) != 0 {
 		log.Infof("executeBlock: %d cross states generated at block height:%d", len(result.CrossStates), block.Header.Height)
