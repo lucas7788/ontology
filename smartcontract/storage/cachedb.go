@@ -21,6 +21,7 @@ package storage
 import (
 	comm "github.com/ontio/ontology/common"
 	"github.com/ontio/ontology/common/config"
+	"github.com/ontio/ontology/common/log"
 	"github.com/ontio/ontology/core/payload"
 	"github.com/ontio/ontology/core/store/common"
 	"github.com/ontio/ontology/core/store/overlaydb"
@@ -71,6 +72,7 @@ func makePrefixedKey(dst []byte, prefix byte, key []byte) []byte {
 // Commit current transaction cache to block cache
 func (self *CacheDB) Commit() {
 	self.memdb.ForEach(func(key, val []byte) {
+		log.Infof("CacheDB Commit,key:%s, value: %s", comm.ToHexString(key), comm.ToHexString(val))
 		if len(val) == 0 {
 			self.backend.Delete(key)
 		} else {
@@ -81,6 +83,7 @@ func (self *CacheDB) Commit() {
 }
 
 func (self *CacheDB) Put(key []byte, value []byte) {
+	log.Infof("CacheDB Put,key:%s, value: %s", comm.ToHexString(key), comm.ToHexString(value))
 	self.put(common.ST_STORAGE, key, value)
 }
 
@@ -99,6 +102,7 @@ func (self *CacheDB) put(prefix common.DataEntryPrefix, key []byte, value []byte
 }
 
 func (self *CacheDB) GetContract(addr comm.Address) (*payload.DeployCode, bool, error) {
+	log.Infof("CacheDB GetContract,addr:%s", addr.ToHexString())
 	destroyed, err := self.IsContractDestroyed(addr)
 	if err != nil {
 		return nil, false, err
@@ -162,7 +166,9 @@ func (self *CacheDB) UnsetContractDestroyed(addr comm.Address, height uint32) {
 }
 
 func (self *CacheDB) Get(key []byte) ([]byte, error) {
-	return self.get(common.ST_STORAGE, key)
+	value, err := self.get(common.ST_STORAGE, key)
+	log.Infof("CacheDB Get,key:%s, value: %s", comm.ToHexString(key), comm.ToHexString(value))
+	return value, err
 }
 
 func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte) ([]byte, error) {
@@ -180,6 +186,7 @@ func (self *CacheDB) get(prefix common.DataEntryPrefix, key []byte) ([]byte, err
 }
 
 func (self *CacheDB) Delete(key []byte) {
+	log.Infof("CacheDB Delete,key:%s", comm.ToHexString(key))
 	self.delete(common.ST_STORAGE, key)
 }
 

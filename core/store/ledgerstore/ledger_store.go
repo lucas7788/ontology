@@ -758,6 +758,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 	}
 	result.Hash = overlay.ChangeHash()
 	result.WriteSet = overlay.GetWriteSet()
+	log.Infof("result.Hash:%s", result.Hash.ToHexString())
 	if len(result.CrossStates) != 0 {
 		log.Infof("executeBlock: %d cross states generated at block height:%d", len(result.CrossStates), block.Header.Height)
 		result.CrossStatesRoot = merkle.TreeHasher{}.HashFullTreeWithLeafHash(result.CrossStates)
@@ -776,9 +777,13 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		result.MerkleRoot = res
 		result.Hash = result.MerkleRoot
 	} else {
+		log.Infof("****result.Hash:%s", result.Hash.ToHexString())
 		result.MerkleRoot = this.stateStore.GetStateMerkleRootWithNewHash(result.Hash)
 	}
-
+	log.Infof("result.MerkleRoot:%s", result.MerkleRoot.ToHexString())
+	if block.Header.Height >= 16096533 {
+		panic(result)
+	}
 	return
 }
 
