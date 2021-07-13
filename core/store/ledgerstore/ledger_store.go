@@ -766,9 +766,10 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		result.MerkleRoot = res
 		result.Hash = result.MerkleRoot
 	} else {
+		log.Infof("****result.Hash:%s", result.Hash.ToHexString())
 		result.MerkleRoot = this.stateStore.GetStateMerkleRootWithNewHash(result.Hash)
 	}
-
+	log.Infof("result.MerkleRoot:%s", result.MerkleRoot.ToHexString())
 	if block.Header.Height >= 16096533 {
 		panic(result)
 	}
@@ -808,6 +809,7 @@ func accumulateHash(hasher hash.Hash, iter scom.StoreIterator) error {
 		val := iter.Value()
 		hasher.Write(key)
 		hasher.Write(val)
+		log.Infof("accumulateHash, key:%s, val:%s", common.ToHexString(key), common.ToHexString(val))
 	}
 	return iter.Error()
 }
