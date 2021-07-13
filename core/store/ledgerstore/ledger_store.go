@@ -768,6 +768,7 @@ func (this *LedgerStoreImp) executeBlock(block *types.Block) (result store.Execu
 		result.MerkleRoot = this.stateStore.GetStateMerkleRootWithNewHash(result.Hash)
 	}
 
+	panic(result)
 	return
 }
 
